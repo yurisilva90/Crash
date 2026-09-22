@@ -1,12 +1,37 @@
 <!doctype html>
-<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Comparação histórica · Crash 30x</title>
-<style>body{font:16px/1.55 system-ui,sans-serif;background:#0e1928;color:#eef4fa;margin:0;padding:24px}main{max-width:850px;margin:auto}h1{font-size:1.7rem}h2{margin-top:2rem}p{color:#c4d0db}table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}th,td{padding:10px 14px;text-align:right;border-bottom:1px solid #36506a;white-space:nowrap}th:first-child,td:first-child{text-align:left}a{color:#6edac3}.box{background:#1b2e44;padding:16px;border-radius:14px}.note{font-size:.9rem}</style>
-<main><p><a href="./">← Painel</a></p><h1>Comparação histórica · payout 30x</h1>
-<p>Atualizada em 22/09/2026. Valores em unidades de aposta inicial, não em reais.</p>
-<div class="box"><h2>Entrada fixa em E0</h2><table><tr><th>Ciclo</th><th>Resultado</th><th>DD máximo</th><th>Ciclos perdidos</th></tr><tr><td>30 rodadas</td><td>−1.118</td><td>2.364</td><td>880</td></tr><tr><td>40 rodadas</td><td>−3.046</td><td>2.510</td><td>562</td></tr><tr><td>61 rodadas</td><td>−3.432</td><td>3.269</td><td>234</td></tr></table></div>
-<p>O ciclo de 30 teve mais ciclos perdidos, mas menor perda agregada e menor drawdown neste recorte. Nos blocos estritamente contínuos, os resultados foram −800, −2.821 e −3.612 unidades, respectivamente.</p>
-<h2>Recuperação calculada para três wins</h2><table><tr><th>Ciclo</th><th>Perda de um ciclo E0</th><th>Próxima mão calculada</th></tr><tr><td>30</td><td>51,62</td><td>0,5934×</td></tr><tr><td>40</td><td>84,55</td><td>0,9718×</td></tr><tr><td>61</td><td>204,40</td><td>2,3494×</td></tr></table>
-<p>A regra é: perda de um ciclo ÷ [3 × (30 − 1)]. Com ciclos de 30 ou 40, essa conta não produz uma mão dobrada.</p>
-<p class="note">Base: aproximadamente 45,4 mil rodadas em sete blocos de ao menos 1.000. Gaps de até 20 foram tratados como sem 30x. A recuperação não passa entre blocos. Simulação histórica não prevê resultados futuros; não inclui limites de banca ou custos da plataforma.</p>
-</main></html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparativos históricos · Crash</title>
+<style>:root{color-scheme:dark}body{font:16px/1.55 system-ui,sans-serif;background:#0e1928;color:#eef4fa;margin:0;padding:20px}main{max-width:900px;margin:auto}h1{font-size:1.8rem;line-height:1.2}h2{font-size:1.35rem;margin:0 0 .8rem}h3{font-size:1.05rem}p,li{color:#c4d0db}a{color:#6edac3}.intro{margin-bottom:28px}.entry{background:#1b2e44;border:1px solid #344d65;border-radius:16px;padding:18px;margin:18px 0}.entry:target{border-color:#6edac3}.date{color:#90a9bd;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;margin:0 0 6px}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{padding:9px 12px;text-align:right;border-bottom:1px solid #36506a;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{font-size:.88rem;color:#abc0d1}nav{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}nav a{border:1px solid #375870;padding:7px 10px;border-radius:10px;text-decoration:none}.note{font-size:.9rem}.warning{border-left:3px solid #eda966;padding-left:12px}strong{color:#f2f7fa}</style></head>
+<body><main><p><a href="./">← Painel</a></p><h1>Comparativos históricos do Crash</h1>
+<p class="intro">O estudo mais recente aparece primeiro. Valores em unidades de aposta inicial, não em reais. Cada seção informa seu recorte: as amostras foram consultadas em momentos diferentes enquanto o coletor continuava recebendo rodadas.</p>
+<nav aria-label="Ir para comparação"><a href="#ciclos">Ciclos 30/40/61</a><a href="#horarios">Horários e cores</a><a href="#limites">Limites de recuperação</a><a href="#modos">20x × 30x e modos</a></nav>
+
+<section class="entry" id="ciclos"><p class="date">22/09/2026 · estudo mais recente</p><h2>30x: ciclos de 30, 40 ou 61 rodadas</h2>
+<p>Aposta inicial de 1 unidade, crescimento de 3,5% após cada rodada sem acerto, sem recuperação entre ciclos. Aproximadamente 45,4 mil rodadas, sete blocos de ao menos 1.000; gaps de até 20 tratados como sem 30x.</p>
+<div class="table-wrap"><table><tr><th>Ciclo</th><th>Resultado E0</th><th>DD máximo</th><th>Ciclos perdidos</th><th>Blocos positivos</th></tr>
+<tr><td>30 rodadas</td><td>−1.118</td><td>2.364</td><td>880</td><td>2/7</td></tr><tr><td>40 rodadas</td><td>−3.046</td><td>2.510</td><td>562</td><td>3/7</td></tr><tr><td>61 rodadas</td><td>−3.432</td><td>3.269</td><td>234</td><td>3/7</td></tr></table></div>
+<p>30 rodadas teve mais ciclos perdidos, mas menor perda monetária simulada e menor DD. Em blocos estritamente contínuos, os resultados E0 foram −800, −2.821 e −3.612 para 30, 40 e 61, respectivamente.</p>
+<h3>Próxima mão pela regra de três wins</h3><div class="table-wrap"><table><tr><th>Ciclo</th><th>Perda nominal E0</th><th>Multiplicador calculado</th></tr><tr><td>30</td><td>51,62</td><td>0,5934×</td></tr><tr><td>40</td><td>84,55</td><td>0,9718×</td></tr><tr><td>61</td><td>204,40</td><td>2,3494×</td></tr></table></div>
+<p class="note">Fórmula: perda do ciclo ÷ [3 × (30 − 1)]. Para ciclos de 30 e 40, o resultado é menor que a mão inicial; portanto, não representa uma mão dobrada. Soros ainda não foi simulado, pois a parcela reinvestida de cada win não foi definida.</p></section>
+
+<section class="entry" id="horarios"><p class="date">22/09/2026 · análise anterior</p><h2>Horários: wins cedo, wins tardios e ciclos perdidos</h2>
+<p>Para 30x/61, cada ciclo foi atribuído à hora de Brasília do <strong>30x anterior</strong>, quando o ciclo começou. Horas com evidente gravação em lote em 19/09 foram excluídas.</p>
+<div class="table-wrap"><table><tr><th>Início</th><th>Verde, 1–21</th><th>Amarelo, 22–41</th><th>Laranja, 42–61</th><th>Loss, 62+</th></tr>
+<tr><td>6h–8h</td><td>81/135 · 60%</td><td>24/135 · 18%</td><td>11/135 · 8%</td><td>19/135 · 14%</td></tr><tr><td>20h–21h</td><td>17/48 · 35%</td><td>13/48 · 27%</td><td>9/48 · 19%</td><td>9/48 · 19%</td></tr><tr><td>23h–0h</td><td>24/55 · 44%</td><td>10/55 · 18%</td><td>10/55 · 18%</td><td>11/55 · 20%</td></tr></table></div>
+<p>6h–8h teve mais wins cedo neste histórico, mas a amostra por faixa é pequena. Em 15 dias com amostra matinal suficiente, a frequência de 20x ficou acima da média do próprio dia em 11 dias; a de 30x, em 10. Isso não demonstra vantagem futura por horário.</p>
+<p>Após um ciclo loss de 30x/61, o próximo foi verde em 107/200 casos (53,5%); após um verde, em 370/747 (49,5%). Após três ciclos seguidos sem loss, o próximo 30x veio até a 30ª rodada em 63,7%, contra 63,2% nos demais casos. <strong>Não apareceu uma diferença convincente para aumentar a mão após três wins.</strong></p></section>
+
+<section class="entry" id="limites"><p class="date">22/09/2026 · análise de recuperação</p><h2>Limitar a recuperação pela média</h2>
+<p>No recorte então disponível de cerca de 45,35 mil rodadas, a profundidade média dos episódios foi aproximadamente E1,6. Chegar a E2 ou mais ocorreu em 29/101 episódios da escada imediata e 26/89 ao esperar um novo win para 30x/61. Ao perder o ciclo no nível máximo, a simulação reinicia em E0 e não carrega a dívida.</p>
+<div class="table-wrap"><table><tr><th>Limite 30x/61</th><th>Escada: resultado / DD</th><th>Espera win: resultado / DD</th></tr>
+<tr><td>E1</td><td>−2.921 / 5.100</td><td>−5.396 / 4.499</td></tr><tr><td>E2</td><td>−2.961 / 6.364</td><td>−8.801 / 8.710</td></tr><tr><td>E3</td><td>−16.697 / 18.966</td><td>−12.349 / 11.997</td></tr><tr><td>E6</td><td>−55.237 / 56.918</td><td>+3.687 / 41.038</td></tr><tr><td>Sem limite</td><td>+79.475 / 160.720</td><td>+64.304 / 67.666</td></tr></table></div>
+<p>Limites baixos reduziram a exposição extrema, mas não produziram lucro agregado nessa regra. O lucro sem limite dependeu de sobreviver a DDs muito grandes. Voltar dobrado depois de atingir o limite não foi incluído.</p></section>
+
+<section class="entry" id="modos"><p class="date">22/09/2026 · comparação inicial</p><h2>20x/41 versus 30x/61: quatro modos</h2>
+<p>Recorte anterior de 45.328 rodadas, sete blocos de ao menos 1.000, gaps até 20 imputados como sem payout. 20x usa crescimento de 5,265% por rodada; 30x, 3,5%. Não se transporta recuperação entre blocos. A “recuperação plana” registra uma dívida, mas mantém a mesma mão E0; seu resultado monetário é idêntico ao E0 sem dívida.</p>
+<div class="table-wrap"><table><tr><th>Configuração</th><th>Modo</th><th>Resultado</th><th>DD máximo</th><th>E máximo</th></tr>
+<tr><td>20x/41</td><td>Escada imediata</td><td>+70.650</td><td>211.043</td><td>E8</td></tr><tr><td>20x/41</td><td>Espera novo win</td><td>+42.827</td><td>74.286</td><td>E7</td></tr><tr><td>20x/41</td><td>E0 ou plana</td><td>−1.045</td><td>2.789</td><td>E0</td></tr>
+<tr><td>30x/61</td><td>Escada imediata</td><td>+79.598</td><td>160.720</td><td>E8</td></tr><tr><td>30x/61</td><td>Espera novo win</td><td>+64.592</td><td>67.666</td><td>E7</td></tr><tr><td>30x/61</td><td>E0 ou plana</td><td>−3.303</td><td>3.269</td><td>E0</td></tr></table></div>
+<p class="warning">Os lucros simulados da escada não indicam uma estratégia segura: vieram acompanhados de exposição e drawdown extremos, sem limite de banca aplicado.</p></section>
+<p class="note">Em todas as comparações, o DD máximo é o maior entre os blocos, não a soma. Não foram modelados limites da plataforma, custos ou restrição de saldo. Recortes e regras diferentes não devem ser comparados como se fossem o mesmo experimento. Resultados históricos não preveem a próxima rodada.</p>
+</main></body></html>
