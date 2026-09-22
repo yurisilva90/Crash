@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparação histórica · Crash 30x</title>
+<style>body{font:16px/1.55 system-ui,sans-serif;background:#0e1928;color:#eef4fa;margin:0;padding:24px}main{max-width:850px;margin:auto}h1{font-size:1.7rem}h2{margin-top:2rem}p{color:#c4d0db}table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}th,td{padding:10px 14px;text-align:right;border-bottom:1px solid #36506a;white-space:nowrap}th:first-child,td:first-child{text-align:left}a{color:#6edac3}.box{background:#1b2e44;padding:16px;border-radius:14px}.note{font-size:.9rem}</style>
+<main><p><a href="./">← Painel</a></p><h1>Comparação histórica · payout 30x</h1>
+<p>Atualizada em 22/09/2026. Valores em unidades de aposta inicial, não em reais.</p>
+<div class="box"><h2>Entrada fixa em E0</h2><table><tr><th>Ciclo</th><th>Resultado</th><th>DD máximo</th><th>Ciclos perdidos</th></tr><tr><td>30 rodadas</td><td>−1.118</td><td>2.364</td><td>880</td></tr><tr><td>40 rodadas</td><td>−3.046</td><td>2.510</td><td>562</td></tr><tr><td>61 rodadas</td><td>−3.432</td><td>3.269</td><td>234</td></tr></table></div>
+<p>O ciclo de 30 teve mais ciclos perdidos, mas menor perda agregada e menor drawdown neste recorte. Nos blocos estritamente contínuos, os resultados foram −800, −2.821 e −3.612 unidades, respectivamente.</p>
+<h2>Recuperação calculada para três wins</h2><table><tr><th>Ciclo</th><th>Perda de um ciclo E0</th><th>Próxima mão calculada</th></tr><tr><td>30</td><td>51,62</td><td>0,5934×</td></tr><tr><td>40</td><td>84,55</td><td>0,9718×</td></tr><tr><td>61</td><td>204,40</td><td>2,3494×</td></tr></table>
+<p>A regra é: perda de um ciclo ÷ [3 × (30 − 1)]. Com ciclos de 30 ou 40, essa conta não produz uma mão dobrada.</p>
+<p class="note">Base: aproximadamente 45,4 mil rodadas em sete blocos de ao menos 1.000. Gaps de até 20 foram tratados como sem 30x. A recuperação não passa entre blocos. Simulação histórica não prevê resultados futuros; não inclui limites de banca ou custos da plataforma.</p>
+</main></html>
