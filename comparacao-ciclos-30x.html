@@ -6,22 +6,22 @@
 <p>Resultados refeitos após a remoção das 54.704 linhas da origem antiga <code>crashia</code>. Instantâneo de 22/09/2026: 13.132 rodadas válidas da extensão, IDs 9.622.150–9.635.285. Há quatro IDs faltantes no começo da captura; eles foram tratados como sem payout na análise principal. Os valores são unidades de aposta inicial, não reais. Esta página substitui os comparativos que misturavam as duas origens.</p>
 <nav aria-label="Ir para comparação"><a href="#ciclos">Ciclos curtos</a><a href="#modos">20x × 30x</a><a href="#limites">Limites E</a><a href="#horarios">Horários</a></nav>
 
-<section class="entry" id="ciclos"><p class="date">Mais recente · somente origem nova</p><h2>30x com mão fixa E0: 30, 40 ou 61 rodadas</h2>
+<section class="entry" id="ciclos"><p class="date">Mais recente · somente origem nova</p><h2>30x com mão fixa R0: 30, 40 ou 61 rodadas</h2>
 <p>Aposta inicial de 1 unidade e aumento de 3,5% após cada rodada sem 30x dentro do ciclo. Ao perder o ciclo, a mão volta ao início; não carrega dívida.</p>
 <div class="table-wrap"><table><tr><th>Ciclo</th><th>Resultado</th><th>DD máximo</th><th>Ciclos perdidos</th></tr><tr><td>30 rodadas</td><td>−335</td><td>1.650</td><td>247</td></tr><tr><td>40 rodadas</td><td>−1.165</td><td>2.445</td><td>161</td></tr><tr><td>61 rodadas</td><td>−1.760</td><td>3.104</td><td>70</td></tr></table></div>
-<p>O ciclo de 30 teve mais perdas por ciclo, mas menor perda agregada e menor DD neste histórico novo. Sem preencher os quatro gaps, os resultados E0 foram −865, −1.825 e −2.145 para 30, 40 e 61 rodadas. A direção permaneceu igual.</p>
+<p>O ciclo de 30 teve mais perdas por ciclo, mas menor perda agregada e menor DD neste histórico novo. Sem preencher os quatro gaps, os resultados R0 foram −865, −1.825 e −2.145 para 30, 40 e 61 rodadas. A direção permaneceu igual.</p>
 <p class="note">Pela regra de recuperar a perda em três wins de 30x, os multiplicadores calculados são 0,5934× para 30 rodadas, 0,9718× para 40 e 2,3494× para 61. Nos ciclos curtos, o valor não representa uma mão dobrada.</p></section>
 
 <section class="entry" id="modos"><p class="date">Comparação anterior, refeita na origem nova</p><h2>20x/41 versus 30x/61: formas de recuperação</h2>
-<p>20x usa aumento de 5,265% por rodada sem alvo; 30x usa 3,5%. A escada avança ao perder um ciclo e reduz um nível após três wins; a opção “espera” pausa até aparecer um novo payout e retorna na rodada seguinte. Mão plana registra dívida, mas aposta como E0 e portanto tem resultado monetário igual ao E0.</p>
-<div class="table-wrap"><table><tr><th>Configuração</th><th>Modo</th><th>Resultado</th><th>DD máximo</th><th>E máximo</th></tr>
-<tr><td>20x/41</td><td>Escada imediata</td><td>+30.385</td><td>211.043</td><td>E8</td></tr><tr><td>20x/41</td><td>Espera novo win</td><td>+17.172</td><td>74.286</td><td>E7</td></tr><tr><td>20x/41</td><td>E0 ou plana</td><td>−648</td><td>2.224</td><td>E0</td></tr>
-<tr><td>30x/61</td><td>Escada imediata</td><td>+36.466</td><td>160.720</td><td>E8</td></tr><tr><td>30x/61</td><td>Espera novo win</td><td>+16.097</td><td>22.450</td><td>E6</td></tr><tr><td>30x/61</td><td>E0 ou plana</td><td>−1.760</td><td>3.104</td><td>E0</td></tr></table></div>
+<p>20x usa aumento de 5,265% por rodada sem alvo; 30x usa 3,5%. A escada avança ao perder um ciclo e reduz um nível após três wins; a opção “espera” pausa até aparecer um novo payout e retorna na rodada seguinte. Mão plana registra dívida, mas aposta como R0 e portanto tem resultado monetário igual ao R0.</p>
+<div class="table-wrap"><table><tr><th>Configuração</th><th>Modo</th><th>Resultado</th><th>DD máximo</th><th>R máximo</th></tr>
+<tr><td>20x/41</td><td>Escada imediata</td><td>+30.385</td><td>211.043</td><td>R8</td></tr><tr><td>20x/41</td><td>Espera novo win</td><td>+17.172</td><td>74.286</td><td>R7</td></tr><tr><td>20x/41</td><td>R0 ou plana</td><td>−648</td><td>2.224</td><td>R0</td></tr>
+<tr><td>30x/61</td><td>Escada imediata</td><td>+36.466</td><td>160.720</td><td>R8</td></tr><tr><td>30x/61</td><td>Espera novo win</td><td>+16.097</td><td>22.450</td><td>R6</td></tr><tr><td>30x/61</td><td>R0 ou plana</td><td>−1.760</td><td>3.104</td><td>R0</td></tr></table></div>
 <p class="warning">O lucro sem limite dependeu de resistir a DDs muito superiores ao resultado final. Sem banca informada, não é possível chamar qualquer modo de sustentável.</p></section>
 
-<section class="entry" id="limites"><p class="date">Recuperação refeita na origem nova</p><h2>30x/61: parar em E1, E2, E3 ou continuar</h2>
-<p>Após perder o ciclo no nível máximo, a simulação recomeça em E0, sem levar a dívida. Houve 22 episódios de recuperação na escada imediata; nove alcançaram E2 ou mais. Na espera por novo win, foram 19 episódios; cinco chegaram a E2 ou mais.</p>
-<div class="table-wrap"><table><tr><th>Limite</th><th>Escada: resultado / DD</th><th>Espera win: resultado / DD</th></tr><tr><td>E1</td><td>−3.396 / 5.100</td><td>−2.903 / 4.743</td></tr><tr><td>E2</td><td>−2.460 / 6.428</td><td>−6.378 / 8.710</td></tr><tr><td>E3</td><td>−15.132 / 19.100</td><td>−6.623 / 11.997</td></tr><tr><td>Sem limite</td><td>+36.466 / 160.720</td><td>+16.097 / 22.450</td></tr></table></div>
+<section class="entry" id="limites"><p class="date">Recuperação refeita na origem nova</p><h2>30x/61: parar em R1, R2, R3 ou continuar</h2>
+<p>Após perder o ciclo no nível máximo, a simulação recomeça em R0, sem levar a dívida. Houve 22 episódios de recuperação na escada imediata; nove alcançaram R2 ou mais. Na espera por novo win, foram 19 episódios; cinco chegaram a R2 ou mais.</p>
+<div class="table-wrap"><table><tr><th>Limite</th><th>Escada: resultado / DD</th><th>Espera win: resultado / DD</th></tr><tr><td>R1</td><td>−3.396 / 5.100</td><td>−2.903 / 4.743</td></tr><tr><td>R2</td><td>−2.460 / 6.428</td><td>−6.378 / 8.710</td></tr><tr><td>R3</td><td>−15.132 / 19.100</td><td>−6.623 / 11.997</td></tr><tr><td>Sem limite</td><td>+36.466 / 160.720</td><td>+16.097 / 22.450</td></tr></table></div>
 <p>Limitar E reduziu o pior recuo, mas não gerou resultado positivo no recorte. Os episódios extremos dominam o resultado sem limite.</p></section>
 
 <section class="entry" id="horarios"><p class="date">Validação pendente no histórico novo</p><h2>Horários, cores e sequências</h2>
