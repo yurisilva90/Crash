@@ -100,8 +100,9 @@
     <div class="field"><label for="exBank">Banca disponível</label><input id="exBank" type="number" min="0" step="0.01" value="285"></div>
     <div class="field"><label for="exCycles">Ciclos por nível</label><input id="exCycles" type="number" min="0" step="1" value="0"></div>
     <div class="field"><label for="exLevels">Qtd. de níveis</label><input id="exLevels" type="number" min="0" step="1" value="2"></div>
+    <div class="field"><label for="exRecoveryMode">Modo de recuperação</label><select id="exRecoveryMode"><option value="0">Zerar</option><option value="1">Lucro integral</option><option value="2">Personalizado</option></select></div>
     <div class="field"><label for="exRecoveryMultiplier">Multiplicador de recuperação por ciclo</label><input id="exRecoveryMultiplier" type="number" min="0" step="0.1" value="1"></div>
-    <div class="field"><label for="exRecoveryProfit">Lucro por ciclo na recuperação (unidades)</label><input id="exRecoveryProfit" type="number" min="0" step="0.1" value="0"></div>
+    <div class="field"><label for="exRecoveryProfit">Lucro por ciclo personalizado (unidades)</label><input id="exRecoveryProfit" type="number" min="0" step="0.1" value="0"></div>
     <div class="field"><label for="exRecoveryCycles">Ciclos de recuperação</label><input id="exRecoveryCycles" type="number" min="1" step="1" value="1"></div>
   </div><button id="exposureCalculate" class="sim-button" type="button">Calcular exposição</button><div class="sim-results"><article class="card"><div class="label">Exposição máxima</div><strong id="exTotalExposure">—</strong></article><article class="card"><div class="label">Banca mínima</div><strong id="exRequiredBank">—</strong></article><article class="card"><div class="label">Status da banca</div><strong id="exBankStatus">—</strong></article></div><div class="expected-table exposure-table" style="margin-top:16px"><div class="expected-row head"><span>Nível / ciclo</span><span>Custo do ciclo</span><span>Acumulado</span></div><div id="exposureRows"></div></div><div class="foot">O multiplicador de recuperação é aplicado ao prejuízo-base de cada nível. 1,0 recupera 100%; 0,5 recupera 50%. O lucro é informado em unidades por ciclo.</div></div></section></div>
   <div id="automationView" class="app-view" hidden><section class="card wide" aria-label="Configuração da automação"><div class="head"><h2>Automação · configuração</h2></div><div class="foot">Prévia sem cliques no jogo. Estas opções ficam salvas apenas neste navegador; ainda não comandam a extensão na VPS.</div><div id="autoStatus" class="auto-status" role="status"><strong>Carregando…</strong><div class="note">—</div></div><div class="auto-settings">
@@ -318,7 +319,8 @@ function renderExposureCalculator(){
   const cycles=Math.max(1,Math.floor(Number(document.querySelector('#exCycles').value)||0));
   const levels=Math.max(1,Math.floor(Number(document.querySelector('#exLevels').value)||0));
   const recoveryMultiplier=Math.max(0,Number(document.querySelector('#exRecoveryMultiplier').value)||0);
-  const recoveryProfitUnits=Math.max(0,Number(document.querySelector('#exRecoveryProfit').value)||0);
+  const recoveryMode=Number(document.querySelector('#exRecoveryMode').value)||0;
+  const recoveryProfitUnits=recoveryMode===0?0:recoveryMode===1?1:Math.max(0,Number(document.querySelector('#exRecoveryProfit').value)||0);
   const recoveryCycles=Math.max(1,Math.floor(Number(document.querySelector('#exRecoveryCycles').value)||1));
   const net=payout-1;
   const cycleFactor=lossMultiplier===1?rounds:(Math.pow(lossMultiplier,rounds)-1)/(lossMultiplier-1);
@@ -354,7 +356,7 @@ function renderExposureCalculator(){
   const status=document.querySelector('#exBankStatus');status.textContent=bank>=debt?'Suficiente':'Insuficiente';status.className=bank>=debt?'mult':'risk';
   document.querySelector('#exposureRows').innerHTML=html;
 }
-['exBase','exPayout','exRounds','exBank','exCycles','exLevels','exRecoveryMultiplier','exRecoveryProfit','exRecoveryCycles'].forEach(id=>document.querySelector('#'+id).addEventListener('input',renderExposureCalculator));
+['exBase','exPayout','exRounds','exBank','exCycles','exLevels','exRecoveryMode','exRecoveryMultiplier','exRecoveryProfit','exRecoveryCycles'].forEach(id=>document.querySelector('#'+id).addEventListener('input',renderExposureCalculator));
 document.querySelector('#exposureCalculate').addEventListener('click',renderExposureCalculator);
 document.querySelectorAll('[data-sim-tab]').forEach(button=>button.addEventListener('click',()=>{const recovery=button.dataset.simTab==='recovery';document.querySelector('#simSimulationPanel').hidden=recovery;document.querySelector('#simRecoveryPanel').hidden=!recovery;document.querySelectorAll('[data-sim-tab]').forEach(tab=>tab.classList.toggle('active',tab===button));if(recovery)renderExposureCalculator()}));
 renderExposureCalculator();
