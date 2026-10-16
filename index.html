@@ -322,8 +322,11 @@ function renderExposureCalculator(){
   const money=value=>Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' BCD';
   for(let n=0;n<levels;n++){
     for(let c=0;c<cycles;c++){
-      const target=n===0&&c===0?0:(c>0?cycleTarget:debt*levelPct);
-      const stake=n===0&&c===0?base:target/net;
+      // O primeiro ciclo começa na entrada-base. Cada ciclo seguinte
+      // calcula a entrada sobre todo o acumulado, sem resetar para a base.
+      const first=n===0&&c===0;
+      const target=first?0:(c===0?debt+(debt*levelPct):debt+cycleTarget);
+      const stake=first?base:target/net;
       const safeStake=Number.isFinite(stake)&&stake>0?stake:base;
       const cost=safeStake*rounds;
       debt+=cost;maxStake=Math.max(maxStake,safeStake);
