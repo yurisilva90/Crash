@@ -98,7 +98,7 @@
     <div class="field"><label for="exPayout">Payout alvo</label><input id="exPayout" type="number" min="1.01" step="0.01" value="30"></div>
     <div class="field"><label for="exRounds">Rodadas por ciclo</label><input id="exRounds" type="number" min="1" step="1" value="21"></div>
     <div class="field"><label for="exBank">Banca disponível</label><input id="exBank" type="number" min="0" step="0.01" value="285"></div>
-    <div class="field"><label for="exCycles">Ciclos por nível</label><input id="exCycles" type="number" min="0" step="1" value="0"></div>
+    <div class="field"><label for="exCycles">Ciclos por nível</label><input id="exCycles" type="number" min="0" step="1" value="2"></div>
     <div class="field"><label for="exLevels">Qtd. de níveis de recuperação</label><input id="exLevels" type="number" min="0" step="1" value="2"></div>
     <div class="field"><label for="exCycleMode">Ciclo</label><select id="exCycleMode"><option value="0">Recuperar</option><option value="1">Lucrar</option></select></div>
     <div class="field"><label for="exRecoveryMultiplier">Dividir o prejuízo em</label><input id="exRecoveryMultiplier" type="number" min="0" step="1" value="1"></div>
@@ -316,7 +316,7 @@ function renderExposureCalculator(){
   const payout=Math.max(1.01,Number(document.querySelector('#exPayout').value)||30);
   const rounds=Math.max(1,Math.floor(Number(document.querySelector('#exRounds').value)||21));
   const lossMultiplier=payout/(payout-1);
-  const cycles=Math.max(1,Math.floor(Number(document.querySelector('#exCycles').value)||0));
+  const cycles=Math.max(1,Math.floor(Number(document.querySelector('#exCycles').value)||2));
   const levels=Math.max(1,Math.floor(Number(document.querySelector('#exLevels').value)||0));
   const recoveryDivider=Math.max(0,Math.floor(Number(document.querySelector('#exRecoveryMultiplier').value)||0));
   const cycleMode=Number(document.querySelector('#exCycleMode').value)||0;
