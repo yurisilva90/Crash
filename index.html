@@ -96,7 +96,7 @@
   </div><div class="foot">Simulação histórica da estratégia atual. O multiplicador de recuperação é calculado pelo payout configurado.</div><div id="variantResults" class="variant-results"></div><div hidden><span id="profit"></span><span id="profitNote"></span><span id="maxDrawdown"></span><span id="ddNote"></span></div></div><div id="simRecoveryPanel" hidden><div class="head"><div><h2>Exposição · Levels</h2><div class="note">Multiplicador por perda calculado automaticamente pelo payout.</div></div></div><div class="settings">
     <div class="field"><label for="exBase">Entrada inicial</label><input id="exBase" type="number" min="0" step="0.01" value="0.50"></div>
     <div class="field"><label for="exPayout">Payout alvo</label><input id="exPayout" type="number" min="1.01" step="0.01" value="30"></div>
-    <div class="field"><label for="exRounds">Rodadas por ciclo</label><input id="exRounds" type="number" min="1" step="1" value="20"></div>
+    <div class="field"><label for="exRounds">Rodadas por ciclo</label><input id="exRounds" type="number" min="1" step="1" value="21"></div>
     <div class="field"><label for="exBank">Banca disponível</label><input id="exBank" type="number" min="0" step="0.01" value="285"></div>
     <div class="field"><label for="exCycles">Ciclos por nível</label><input id="exCycles" type="number" min="0" step="1" value="0"></div>
     <div class="field"><label for="exLevels">Qtd. de níveis</label><input id="exLevels" type="number" min="0" step="1" value="2"></div>
@@ -314,7 +314,7 @@ applyStrategy(activeStrategy,false);render();
 function renderExposureCalculator(){
   const base=Math.max(0,Number(document.querySelector('#exBase').value)||0);
   const payout=Math.max(1.01,Number(document.querySelector('#exPayout').value)||30);
-  const rounds=Math.max(1,Math.floor(Number(document.querySelector('#exRounds').value)||20));
+  const rounds=Math.max(1,Math.floor(Number(document.querySelector('#exRounds').value)||21));
   const lossMultiplier=payout/(payout-1);
   const cycles=Math.max(1,Math.floor(Number(document.querySelector('#exCycles').value)||0));
   const levels=Math.max(1,Math.floor(Number(document.querySelector('#exLevels').value)||0));
