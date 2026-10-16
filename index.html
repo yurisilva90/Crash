@@ -97,6 +97,7 @@
     <div class="field"><label for="exBase">Entrada inicial</label><input id="exBase" type="number" min="0" step="0.01" value="0.50"></div>
     <div class="field"><label for="exPayout">Payout alvo</label><input id="exPayout" type="number" min="1.01" step="0.01" value="30"></div>
     <div class="field"><label for="exRounds">Rodadas por ciclo</label><input id="exRounds" type="number" min="1" step="1" value="20"></div>
+    <div class="field"><label for="exLossMultiplier">Multiplicador por perda</label><input id="exLossMultiplier" type="number" min="1" step="0.001" value="1.035"></div>
     <div class="field"><label for="exBank">Banca disponível</label><input id="exBank" type="number" min="0" step="0.01" value="285"></div>
     <div class="field"><label for="exCycles">Ciclos por nível</label><input id="exCycles" type="number" min="0" step="1" value="0"></div>
     <div class="field"><label for="exLevels">Qtd. de níveis</label><input id="exLevels" type="number" min="0" step="1" value="2"></div>
@@ -312,11 +313,13 @@ function renderExposureCalculator(){
   const base=Math.max(0,Number(document.querySelector('#exBase').value)||0);
   const payout=Math.max(1.01,Number(document.querySelector('#exPayout').value)||30);
   const rounds=Math.max(1,Math.floor(Number(document.querySelector('#exRounds').value)||20));
+  const lossMultiplier=Math.max(1,Number(document.querySelector('#exLossMultiplier').value)||1);
   const cycles=Math.max(1,Math.floor(Number(document.querySelector('#exCycles').value)||0));
   const levels=Math.max(1,Math.floor(Number(document.querySelector('#exLevels').value)||0));
   const levelPct=Math.min(200,Math.max(0,Number(document.querySelector('#exLevelPct').value)||0))/100;
   const cycleMode=Number(document.querySelector('#exCycleMode').value)||0;
   const net=payout-1;
+  const cycleFactor=lossMultiplier===1?rounds:(Math.pow(lossMultiplier,rounds)-1)/(lossMultiplier-1);
   const cycleTarget=cycleMode===1?net*base:0;
   let debt=0,maxStake=0,html='';
   const money=value=>Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' BCD';
@@ -328,7 +331,7 @@ function renderExposureCalculator(){
       const target=first?0:(c===0?debt+(debt*levelPct):debt+cycleTarget);
       const stake=first?base:target/net;
       const safeStake=Number.isFinite(stake)&&stake>0?stake:base;
-      const cost=safeStake*rounds;
+      const cost=safeStake*cycleFactor;
       debt+=cost;maxStake=Math.max(maxStake,safeStake);
       html+=`<div class="expected-row"><span>N${n} · C${c}</span><span>${money(cost)}</span><span>${money(debt)}</span></div>`;
     }
@@ -339,7 +342,7 @@ function renderExposureCalculator(){
   const status=document.querySelector('#exBankStatus');status.textContent=bank>=debt?'Suficiente':'Insuficiente';status.className=bank>=debt?'mult':'risk';
   document.querySelector('#exposureRows').innerHTML=html;
 }
-['exBase','exPayout','exRounds','exBank','exCycles','exLevels','exLevelPct','exCycleMode'].forEach(id=>document.querySelector('#'+id).addEventListener('input',renderExposureCalculator));
+['exBase','exPayout','exRounds','exLossMultiplier','exBank','exCycles','exLevels','exLevelPct','exCycleMode'].forEach(id=>document.querySelector('#'+id).addEventListener('input',renderExposureCalculator));
 document.querySelector('#exposureCalculate').addEventListener('click',renderExposureCalculator);
 document.querySelectorAll('[data-sim-tab]').forEach(button=>button.addEventListener('click',()=>{const recovery=button.dataset.simTab==='recovery';document.querySelector('#simSimulationPanel').hidden=recovery;document.querySelector('#simRecoveryPanel').hidden=!recovery;document.querySelectorAll('[data-sim-tab]').forEach(tab=>tab.classList.toggle('active',tab===button));if(recovery)renderExposureCalculator()}));
 renderExposureCalculator();
