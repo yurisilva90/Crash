@@ -338,15 +338,13 @@ function renderExposureCalculator(){
   };
   for(let n=0;n<levels;n++){
     if(n>0&&recoveryDivider===0)break;
-    const recoveryBaseLoss=debt;
-    const rowsInLevel=n===0?cycles:recoveryCycles;
-    for(let c=0;c<rowsInLevel;c++){
+    for(let c=0;c<cycles;c++){
       const first=n===0&&c===0;
       const target=first
         ? 0
         : n===0
           ? debt+cycleProfit
-          : recoveryBaseLoss/recoveryDivider+recoveryProfit;
+          : debt/recoveryDivider+recoveryProfit;
       addRow(`N${n} · C${c}`,target,first);
     }
   }
