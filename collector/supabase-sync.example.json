@@ -1,0 +1,6 @@
+{
+  "projectUrl": "https://SEU-PROJETO.supabase.co",
+  "publishableKey": "COLOQUE_A_CHAVE_PUBLICAVEL_NO_AMBIENTE_SEGURO",
+  "collectorToken": "COLOQUE_O_TOKEN_DO_RPC_NO_AMBIENTE_SEGURO",
+  "rpc": "ingest_crash_rounds"
+}

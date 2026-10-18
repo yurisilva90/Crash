@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Crash History Collector (local)",
+  "version": "1.0.17",
+  "description": "Captura localmente as rodadas visíveis do Crash e as envia somente para o coletor no próprio VPS.",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["http://127.0.0.1:8765/*", "https://bc.game/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": ["https://bc.game/pt/game/crash*", "https://bc.game/*/game/crash*"],
+    "js": ["content.js"],
+    "run_at": "document_idle",
+    "all_frames": true,
+    "match_about_blank": true
+  }],
+  "action": { "default_title": "Crash History Collector" }
+}

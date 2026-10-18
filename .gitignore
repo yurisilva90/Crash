@@ -1,0 +1,12 @@
+# Runtime data and credentials — never publish these files.
+collector/data/
+collector/supabase-sync.json
+collector/google-sync.json
+collector/control-token.txt
+collector/*.log
+collector/*.lock
+collector/*.tmp
+collector/backups/
+.env
+.env.*
+!.env.example
