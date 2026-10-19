@@ -38,8 +38,10 @@ Nunca commitar senha, perfil do Chrome, token de controle, `supabase-sync.json`,
 
 - Estratégias visíveis: `30x`, `20x` e `2x`.
 - O preset `20x` usa payout 20.
+- O fator por perda é derivado do payout: 20x = 1,05263; 30x = 1,03448.
 - Os ciclos de referência do mapa usam 21 rodadas: 1–21, 22–42 e 43–63.
 - A métrica de cores dos botões deve continuar sendo calculada pelo histórico; não substituir por um palpite manual.
+- A simulação e a exposição usam a configuração global do cabeçalho: payout, rodadas, ciclos e níveis. A nomenclatura é C0/C1/C2 para ciclos dentro do nível e N0/N1/N2 para níveis; a aba Recuperação mantém somente banca e modo Recuperar/Lucrar.
 
 ## Regras para o Hermes
 
