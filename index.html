@@ -286,10 +286,10 @@ applyStrategy(activeStrategy,false);render();
 (()=>{
   const quickIds=['quickLevels','quickCycles','quickRounds','quickPrevious','quickGale'];
   const quickDefaults={quickLevels:'0',quickCycles:'1',quickRounds:'21',quickPrevious:'Vermelho (padrão)',quickGale:'R2'};
-  const quickTwo=document.querySelector('#strategyQuickTwo');
+  const quickGrid=document.querySelector('.strategy-quick-grid'),quickTwo=document.querySelector('#strategyQuickTwo');
   function loadQuick(){try{const saved=JSON.parse(localStorage.getItem('crash-strategy-quick-v1')||'null');for(const id of quickIds){const el=document.getElementById(id);if(el)el.value=String(saved?.[id]??quickDefaults[id])}}catch{for(const id of quickIds){const el=document.getElementById(id);if(el)el.value=quickDefaults[id]}}}
   function saveQuick(){const values=Object.fromEntries(quickIds.map(id=>[id,document.getElementById(id)?.value||quickDefaults[id]]));try{localStorage.setItem('crash-strategy-quick-v1',JSON.stringify(values))}catch{}const rounds=document.querySelector('#quickRounds')?.value;if(rounds){const cycle=document.querySelector('#cycleRounds');if(cycle)cycle.value=rounds;const auto=document.querySelector('#autoCycleRounds');if(auto)auto.value=rounds}if(typeof render==='function')render()}
-  function syncQuick(){const is2x=(typeof activeStrategy!=='undefined'&&activeStrategy==='2x');if(quickTwo)quickTwo.hidden=!is2x}
+  function syncQuick(){const is2x=(typeof activeStrategy!=='undefined'&&activeStrategy==='2x');if(quickGrid)quickGrid.hidden=is2x;if(quickTwo)quickTwo.hidden=!is2x}
   loadQuick();syncQuick();
   document.querySelectorAll('#strategyQuickControls select').forEach(el=>el.addEventListener('change',()=>{saveQuick();syncQuick();}));
   document.querySelectorAll('[data-quick-pattern]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-quick-pattern]').forEach(item=>item.classList.toggle('active',item===button));try{localStorage.setItem('crash-strategy-quick-pattern',button.dataset.quickPattern)}catch{}}));
