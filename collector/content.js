@@ -11,6 +11,8 @@
   let startupTimer;
   let observer;
   let lastMetricsKey = '';
+  let pendingLiveMetrics = null;
+  let lastLiveRoundId = null;
   let lastAccountStatusKey = '';
   let lastAccountStatusSentAt = 0;
   const receiverEndpoint = 'http://127.0.0.1:8765/rounds';
@@ -89,6 +91,7 @@
     const key = `${activePlayers}|${totalPlayers}|${metrics.total_amount_display}`;
     if (key === lastMetricsKey || stopped) return;
     lastMetricsKey = key;
+    pendingLiveMetrics = metrics;
     fetch(receiverEndpoint, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({ source: 'bc-game-crash-extension', rows: [], live_metrics: metrics })
@@ -198,6 +201,27 @@
     // páginas percorridas ao receptor local.
     const analysisRe = /\b(\d{7,8})\s+(\d+(?:[.,]\d+)?)\s*[×x]/gi;
     for (const match of text.matchAll(analysisRe)) add(rows, match[1], match[2]);
+    // Vincula o último snapshot de volume à próxima rodada nova observada.
+    // Durante a recuperação histórica não fazemos associação: ali as linhas
+    // são antigas e o volume ao vivo poderia cair na rodada errada.
+    if (!recoveringHistory && rows.length) {
+      const latest = rows.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0);
+      if (latest && lastLiveRoundId === null) {
+        lastLiveRoundId = latest;
+      } else if (latest && latest > lastLiveRoundId) {
+        const metricAge = pendingLiveMetrics?.captured_at ? Date.now() - new Date(pendingLiveMetrics.captured_at).getTime() : Infinity;
+        const target = rows.find(row => Number(row.id) === latest);
+        if (target && pendingLiveMetrics && metricAge >= -5000 && metricAge <= 120000) {
+          target.active_players = pendingLiveMetrics.active_players;
+          target.total_players = pendingLiveMetrics.total_players;
+          target.total_amount_brl = pendingLiveMetrics.total_amount_brl;
+          target.total_amount_display = pendingLiveMetrics.total_amount_display;
+          target.volume_captured_at = pendingLiveMetrics.captured_at;
+          pendingLiveMetrics = null;
+        }
+        lastLiveRoundId = latest;
+      }
+    }
     sendRows(rows);
   }
 

@@ -41,6 +41,16 @@ function Send-Json($writer, [int]$status, $object) {
   $writer.BaseStream.Flush()
 }
 
+function Ensure-VolumeColumns([string]$path) {
+  if (-not (Test-Path -LiteralPath $path)) { return }
+  $header = (Get-Content -LiteralPath $path -TotalCount 1 -ErrorAction SilentlyContinue)
+  if ($header -and $header -match 'total_amount_brl') { return }
+  $tmp = "$path.volume.tmp"
+  @(Import-Csv -LiteralPath $path | Select-Object captured_at,round_id,multiplier,source,active_players,total_players,total_amount_brl,total_amount_display,volume_captured_at) |
+    Export-Csv -LiteralPath $tmp -NoTypeInformation -Encoding utf8
+  Move-Item -LiteralPath $tmp -Destination $path -Force
+}
+
 while ($true) {
   $client = $listener.AcceptTcpClient()
   $stream = $null
@@ -138,9 +148,15 @@ while ($true) {
         round_id = $id
         multiplier = $mult.ToString([Globalization.CultureInfo]::InvariantCulture)
         source = [string]$payload.source
+        active_players = if ($null -ne $row.active_players) { [int]$row.active_players } else { $null }
+        total_players = if ($null -ne $row.total_players) { [int]$row.total_players } else { $null }
+        total_amount_brl = if ($null -ne $row.total_amount_brl) { ([double]$row.total_amount_brl).ToString([Globalization.CultureInfo]::InvariantCulture) } else { $null }
+        total_amount_display = if ($row.total_amount_display) { [string]$row.total_amount_display } else { $null }
+        volume_captured_at = if ($row.volume_captured_at) { [string]$row.volume_captured_at } else { $null }
       })
     }
     if ($newRows.Count) {
+      Ensure-VolumeColumns $csv
       $newRows | Export-Csv -Path $csv -Append -NoTypeInformation -Encoding utf8
       $newRows.round_id | Add-Content -LiteralPath $idsIndexPath -Encoding utf8
       foreach ($row in $newRows) { ($row | ConvertTo-Json -Compress) | Add-Content -Path $jsonl -Encoding utf8 }

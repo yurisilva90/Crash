@@ -133,6 +133,11 @@ $allRows = @($orderedRows | Where-Object {
     source = $_.source
     signal_before = $meta.signal_before
     cycle_zone = $meta.cycle_zone
+    active_players = if ($null -ne $_.active_players -and $_.active_players -ne '') { [int]$_.active_players } else { $null }
+    total_players = if ($null -ne $_.total_players -and $_.total_players -ne '') { [int]$_.total_players } else { $null }
+    total_amount_brl = if ($null -ne $_.total_amount_brl -and $_.total_amount_brl -ne '') { [decimal](($_.total_amount_brl -replace ',', '.')) } else { $null }
+    total_amount_display = if ($_.total_amount_display) { [string]$_.total_amount_display } else { $null }
+    volume_captured_at = if ($_.volume_captured_at) { [string]$_.volume_captured_at } else { $null }
   }
 })
 

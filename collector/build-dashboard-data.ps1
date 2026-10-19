@@ -43,7 +43,7 @@ $payload = [ordered]@{
   lastRound = [ordered]@{ round_id = $latestRound.round_id; multiplier = [double]$latestRound.multiplier; captured_at = $latestRound.captured_at }
   directWinStreak = $directStreak
   pending = [ordered]@{ losses_before_win = if ($pending) { [int]$pending.losses_before_win } else { $null }; level = if ($pending) { [int]$pending.loss_cycles_before_win } else { 0 } }
-  rounds = @($allRounds | ForEach-Object { [ordered]@{ round_id = $_.round_id; multiplier = [double]$_.multiplier; captured_at = $_.captured_at } })
+  rounds = @($allRounds | ForEach-Object { [ordered]@{ round_id = $_.round_id; multiplier = [double]$_.multiplier; captured_at = $_.captured_at; active_players = if ($null -ne $_.active_players -and $_.active_players -ne '') { [int]$_.active_players } else { $null }; total_players = if ($null -ne $_.total_players -and $_.total_players -ne '') { [int]$_.total_players } else { $null }; total_amount_brl = if ($null -ne $_.total_amount_brl -and $_.total_amount_brl -ne '') { [double](($_.total_amount_brl -replace ',', '.')) } else { $null }; total_amount_display = if ($_.total_amount_display) { [string]$_.total_amount_display } else { $null }; volume_captured_at = if ($_.volume_captured_at) { [string]$_.volume_captured_at } else { $null } } })
   events = @($events)
 }
 $target = Join-Path $DashboardDirectory 'data\dashboard.json'
