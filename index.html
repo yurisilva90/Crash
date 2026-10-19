@@ -350,7 +350,6 @@ function renderExposureCalculator(){
   const cycleFactor=lossMultiplier===1?rounds:(Math.pow(lossMultiplier,rounds)-1)/(lossMultiplier-1);
   const profitPerUnit=base*net;
   const cycleProfit=cycleMode===1?profitPerUnit:0;
-  const recoveryProfit=recoveryProfitUnits*profitPerUnit;
   let debt=0,maxStake=0,html='';
   const money=value=>Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' BCD';
   const addRow=(label,target,first)=>{
