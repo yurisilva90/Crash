@@ -221,6 +221,21 @@
     // páginas percorridas ao receptor local.
     const analysisRe = /\b(\d{7,8})\s+(\d+(?:[.,]\d+)?)\s*[×x]/gi;
     for (const match of text.matchAll(analysisRe)) add(rows, match[1], match[2]);
+    // Layouts recentes da BC deixam o ID e o payout apenas em atributos do
+    // cartão (data-round-id/data-id/aria-label), sem renderizá-los como texto.
+    // Ler esses atributos mantém a coleta independente do painel de apostas
+    // ou do script que esteja aberto em outro navegador.
+    const attrNodes = [...document.querySelectorAll('[data-round-id],[data-round],[data-id],[data-multiplier],[aria-label]')]
+      .filter(element => isVisible(element));
+    for (const element of attrNodes) {
+      const attrs = ['data-round-id', 'data-round', 'data-id', 'aria-label'];
+      const attrText = attrs.map(name => element.getAttribute(name) || '').join(' ');
+      const idMatch = attrText.match(/\b(\d{7,8})\b/);
+      if (!idMatch) continue;
+      const multiplierAttr = element.getAttribute('data-multiplier') || element.getAttribute('data-payout') || '';
+      const multiplierMatch = String(multiplierAttr || element.textContent || attrText).match(/(\d+(?:[.,]\d+)?)\s*[×x]/i);
+      if (multiplierMatch) add(rows, idMatch[1], multiplierMatch[1]);
+    }
     // Vincula o último snapshot de volume à próxima rodada nova observada.
     // Durante a recuperação histórica não fazemos associação: ali as linhas
     // são antigas e o volume ao vivo poderia cair na rodada errada.
