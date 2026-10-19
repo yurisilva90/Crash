@@ -149,7 +149,7 @@ if ($recoveryPending -and $null -ne $recoveryRound -and $latestLocalRound -gt $r
     ConvertTo-Json | Set-Content -LiteralPath $recoveryStatePath -Encoding utf8
 }
 $gapRecoveryRequired = $gapAudit -and $gapAudit.state -eq 'GAP_DETECTED' -and [int]$gapAudit.recoverable_missing_count -gt 0
-$recoveryDue = -not $recoveryPending -and ($null -eq $lastChromeRecovery -or ($now - $lastChromeRecovery).TotalMinutes -ge 60)
+$recoveryDue = -not $recoveryPending -and ($null -eq $lastChromeRecovery -or ($now - $lastChromeRecovery).TotalMinutes -ge 10)
 # Lacunas exigem a mesma varredura do histórico que um coletor parado. Antes,
 # esta aba só era aberta quando o CSV ficava velho, deixando pedidos de gap sem
 # uma segunda tentativa caso a mensagem da extensão não fosse recebida.
