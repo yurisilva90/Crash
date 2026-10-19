@@ -13,6 +13,7 @@
   let lastMetricsKey = '';
   let pendingLiveMetrics = null;
   let lastLiveRoundId = null;
+  let latestCapturedRoundId = null;
   let lastAccountStatusKey = '';
   let lastAccountStatusSentAt = 0;
   const receiverEndpoint = 'http://127.0.0.1:8765/rounds';
@@ -134,6 +135,24 @@
     const button = [...document.querySelectorAll('button')]
       .find(element => isVisible(element) && /^(sacar|retirar)$/i.test(element.textContent.trim()));
     const betActive = Boolean(button && !button.disabled && button.getAttribute('aria-disabled') !== 'true');
+    // O valor da aposta é lido somente dentro do contêiner do botão Sacar/
+    // Retirar. Assim não confundimos o campo "aposta inicial" do script com
+    // a mão realmente enviada à BC. Se a BC não expuser esse campo no DOM,
+    // o valor permanece nulo.
+    let betAmount = null;
+    if (button) {
+      let scope = button;
+      for (let depth = 0; depth < 6 && scope && betAmount === null; depth++, scope = scope.parentElement) {
+        const candidates = [...scope.querySelectorAll('input,[role="spinbutton"],[contenteditable="true"]')]
+          .filter(element => isVisible(element))
+          .filter(element => !/inicial|initial|payout|multiplicador|multiplier/i.test(`${element.getAttribute('aria-label') || ''} ${element.getAttribute('name') || ''} ${element.getAttribute('placeholder') || ''}`));
+        const candidate = candidates.find(element => /aposta|bet|valor|amount|stake/i.test(`${element.getAttribute('aria-label') || ''} ${element.getAttribute('name') || ''} ${element.getAttribute('placeholder') || ''}`)) || candidates[0];
+        if (candidate) {
+          const parsed = parseLocalizedNumber(candidate.value ?? candidate.textContent);
+          if (Number.isFinite(parsed) && parsed > 0) betAmount = parsed;
+        }
+      }
+    }
     let liveMultiplier = null;
     if (betActive) {
       const multiplierPattern = /^(\d+(?:[.,]\d+)?)\s*[×x]$/i;
@@ -149,14 +168,16 @@
       balance: wallet ? parseLocalizedNumber(wallet[1]) : null,
       currency: wallet ? wallet[2].toUpperCase() : null,
       bet_active: betActive,
+      round_id: latestCapturedRoundId,
+      bet_amount: betAmount,
       live_multiplier: Number.isFinite(liveMultiplier) ? liveMultiplier : null,
-      status: betActive ? 'aposta ativa' : 'sem aposta'
+      status: `${betActive ? 'aposta ativa' : 'sem aposta'}${latestCapturedRoundId ? ` · rodada ${latestCapturedRoundId}` : ''}${Number.isFinite(betAmount) ? ` · valor ${betAmount}` : ''}`
     };
   }
 
   function sendAccountStatus() {
     const accountStatus = readWalletStatus();
-    const key = [accountStatus.balance, accountStatus.currency, accountStatus.bet_active, accountStatus.live_multiplier, accountStatus.status].join('|');
+    const key = [accountStatus.balance, accountStatus.currency, accountStatus.bet_active, accountStatus.round_id, accountStatus.bet_amount, accountStatus.live_multiplier, accountStatus.status].join('|');
     const now = Date.now();
     if ((key === lastAccountStatusKey && now - lastAccountStatusSentAt < 3000) || stopped) return;
     lastAccountStatusKey = key;
@@ -183,7 +204,6 @@
     const text = document.body ? document.body.innerText : "";
     const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     sendLiveMetrics(lines);
-    sendAccountStatus();
     const rows = [];
     for (let i = 0; i + 1 < lines.length; i++) {
       if (!idRe.test(lines[i])) continue;
@@ -206,6 +226,7 @@
     // são antigas e o volume ao vivo poderia cair na rodada errada.
     if (!recoveringHistory && rows.length) {
       const latest = rows.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0);
+      if (latest) latestCapturedRoundId = latest;
       if (latest && lastLiveRoundId === null) {
         lastLiveRoundId = latest;
       } else if (latest && latest > lastLiveRoundId) {
@@ -223,6 +244,9 @@
       }
     }
     sendRows(rows);
+    // Depois de atualizar a última rodada, o próximo status já identifica
+    // exatamente a rodada que o painel deve validar.
+    sendAccountStatus();
   }
 
   // Recupera pela aba pública Histórico > Análise. Ela expõe uma janela de

@@ -197,6 +197,8 @@ while ($true) {
       $balance = if ($null -eq $account.balance) { $null } else { [double]$account.balance }
       $currency = [string]$account.currency
       $betActive = [bool]$account.bet_active
+      $roundId = if ($null -eq $account.round_id -or [string]::IsNullOrWhiteSpace([string]$account.round_id)) { $null } else { [string]$account.round_id }
+      $betAmount = if ($null -eq $account.bet_amount) { $null } else { [double]$account.bet_amount }
       $liveMultiplier = if ($null -eq $account.live_multiplier) { $null } else { [double]$account.live_multiplier }
       # A leitura do multiplicador pode ocorrer na animação inicial, antes de
       # chegar a 1x. Isso não invalida o saldo nem o estado da aposta.
@@ -210,6 +212,8 @@ while ($true) {
           balance = $balance
           currency = $currency
           bet_active = $betActive
+          round_id = $roundId
+          bet_amount = $betAmount
           live_multiplier = $liveMultiplier
           status = if ($account.status) { [string]$account.status } elseif ($betActive) { 'aposta ativa' } else { 'sem aposta' }
           source = [string]$payload.source

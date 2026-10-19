@@ -4,6 +4,7 @@ import ssl
 import sys
 import time
 import urllib.request
+import urllib.error
 
 
 def main():
@@ -24,24 +25,32 @@ def main():
     if runtime.get("balance") is None or not runtime.get("currency"):
         print(json.dumps({"runtime_sent": False, "reason": "balance unavailable"}))
         return
-    body = json.dumps({
+    base_payload = {
         "p_token": config["collectorToken"],
         "p_balance": runtime.get("balance"),
         "p_currency": runtime.get("currency"),
         "p_bet_active": bool(runtime.get("bet_active")),
         "p_live_multiplier": runtime.get("live_multiplier"),
         "p_status": runtime.get("status") or "sem aposta",
-    }).encode("utf-8")
+    }
+    extended_payload = dict(base_payload)
+    if runtime.get("round_id") is not None:
+        extended_payload["p_round_id"] = str(runtime["round_id"])
+    if runtime.get("bet_amount") is not None:
+        extended_payload["p_bet_amount"] = runtime["bet_amount"]
     key = config["publishableKey"]
-    request = urllib.request.Request(
-        config["projectUrl"].rstrip("/") + "/rest/v1/rpc/upsert_crash_runtime_status",
-        data=body,
-        method="POST",
-        headers={"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(request, timeout=15, context=ssl.create_default_context()) as response:
-        response.read()
-    print(json.dumps({"runtime_sent": True}))
+    endpoint = config["projectUrl"].rstrip("/") + "/rest/v1/rpc/upsert_crash_runtime_status"
+    headers = {"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json"}
+    for payload in (extended_payload, base_payload):
+        request = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=15, context=ssl.create_default_context()) as response:
+                response.read()
+            print(json.dumps({"runtime_sent": True, "extended": payload is extended_payload}))
+            return
+        except urllib.error.HTTPError:
+            if payload is base_payload:
+                raise
 
 
 if __name__ == "__main__":
