@@ -221,6 +221,11 @@
     // páginas percorridas ao receptor local.
     const analysisRe = /\b(\d{7,8})\s+(\d+(?:[.,]\d+)?)\s*[×x]/gi;
     for (const match of text.matchAll(analysisRe)) add(rows, match[1], match[2]);
+    // Em telas responsivas o ID e o payout podem ficar em nós separados,
+    // com rótulos intermediários. Associar apenas dentro de uma janela curta
+    // evita misturar uma rodada com o multiplicador de outra linha.
+    const nearbyRe = /\b(\d{7,8})\b[\s\S]{0,90}?\b(\d+(?:[.,]\d+)?)\s*[×x]/gi;
+    for (const match of text.matchAll(nearbyRe)) add(rows, match[1], match[2]);
     // Layouts recentes da BC deixam o ID e o payout apenas em atributos do
     // cartão (data-round-id/data-id/aria-label), sem renderizá-los como texto.
     // Ler esses atributos mantém a coleta independente do painel de apostas
