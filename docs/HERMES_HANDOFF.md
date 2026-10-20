@@ -42,6 +42,7 @@ Nunca commitar senha, perfil do Chrome, token de controle, `supabase-sync.json`,
 - Os ciclos de referência do mapa usam 21 rodadas: 1–21, 22–42 e 43–63.
 - A métrica de cores dos botões deve continuar sendo calculada pelo histórico; não substituir por um palpite manual.
 - A simulação e a exposição usam a configuração global do cabeçalho: payout, rodadas, ciclos e níveis. A nomenclatura é C0/C1/C2 para ciclos dentro do nível e N0/N1/N2 para níveis; a aba Recuperação mantém somente banca e modo Recuperar/Lucrar.
+- O cabeçalho usa `Nível máximo` e `Ciclo máximo` indexados a partir de zero: 0 = somente N0/C0, 1 = N0+N1 ou C0+C1. Os seletores R/L ficam ao lado de cada campo: R recupera o prejuízo; L recupera e adiciona a unidade de lucro correspondente. O painel, mapa e exposição leem esses valores diretamente.
 
 ## Regras para o Hermes
 
