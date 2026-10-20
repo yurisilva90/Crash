@@ -378,6 +378,12 @@ applyStrategy(activeStrategy,false);render();
     finally{btn.disabled=false;setTimeout(()=>{btn.textContent=label;btn.classList.remove('pending','ok','bad')},3500)}
   }));
 })();
+renderHeatMap=()=>{
+  const c=config(),target=document.querySelector('#heatRows'),note=document.querySelector('#heatNote');if(!target)return;
+  const all=mapRows.length&&Number(window.mapPanelWindow)>=500?mapRows:(historicalRows.length?historicalRows:rows),filtered=filteredRows(all),desired=window.mapPanelWindow===Infinity?Infinity:Number(window.mapPanelWindow)||50,source=desired===Infinity?filtered:filtered.slice(-desired);
+  if(!source.length){target.innerHTML='<div class="heat-empty">Aguardando rodadas.</div>';if(note)note.textContent='Aguardando dados do histórico.';return}
+  const {counts,available}=heatDistribution(source,c.payout,c.cycleRounds),maximum=Math.max(1,...counts);target.innerHTML=counts.map((n,i)=>{const intensity=n/maximum,color=heatColor(intensity),width=Math.max(1,intensity*87);return `<div class="heat-row" role="listitem" aria-label="Rodada ${i+1}: ${n} ganhos"><span class="heat-position">${i+1}</span><div class="heat-bar-area"><div class="heat-track" style="width:${width}%"><div class="heat-fill" style="background:${color}"></div></div><span class="heat-value">${n}</span></div></div>`}).join('');if(note)note.textContent=`${available.toLocaleString('pt-BR')} rodadas analisadas`;
+};
 function recolorScoreByProgressiveProfit(events){
   const table=document.querySelector('#signalScore table');if(!table)return;
   const c=config(),payout=Math.max(1.01,Number(c.payout)||30),rounds=Math.max(1,Number(c.cycleRounds)||21),factor=payout/(payout-1),cycleCost=(Math.pow(factor,rounds)-1)/(factor-1),keys=['green','yellow','orange','red'],profit=Object.fromEntries(keys.map(key=>[key,0]));
