@@ -395,6 +395,7 @@ function recolorScoreByProgressiveProfit(events){
   cells.forEach((cell,index)=>{const value=values[index]??0,number=cell.querySelector('.score-number')||cell;number.classList.remove('score-positive','score-negative','score-neutral');number.classList.add(value>0?'score-positive':value<0?'score-negative':'score-neutral');number.title=`Resultado progressivo: ${value.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} unidades`;cell.querySelector('.score-profit')?.remove();const line=document.createElement('small');line.className='score-profit';line.textContent=`(${value>=0?'+':''}${value.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`;cell.append(line)});
 }
 const renderSignalScoreWithProfit=renderSignalScore;renderSignalScore=function(events,allEvents){renderSignalScoreWithProfit(events,allEvents);recolorScoreByProgressiveProfit(events)};
+const renderMapBallsWithProfit=renderMapBalls;renderMapBalls=function(){renderMapBallsWithProfit();const source=filteredRows(count>=500&&mapRows.length?mapRows:rows);recolorScoreByProgressiveProfit(analyze(source).events.slice(-count).reverse())};
 function applyBallSignalMarkers(){
   const mapTarget=document.querySelector('#balls'),panelTarget=document.querySelector('#recentBalls');
   const mapSource=filteredRows(count>=500&&mapRows.length?mapRows:rows),mapEvents=activeStrategy==='2x'?[]:analyze(mapSource).events.slice(-count).reverse();
