@@ -22,8 +22,29 @@
   }
 
   function normaliseSignal(value) {
-    const raw = String(value || '').toLowerCase();
-    return raw.startsWith('green') ? 'green' : raw.startsWith('red') ? 'red' : 'yellow';
+    const raw = String(value?.tone || value || '').toLowerCase();
+    return ['green', 'yellow', 'blue', 'red'].find(tone => raw.startsWith(tone)) || 'unknown';
+  }
+
+  function exposure(input) {
+    const cfg = normaliseConfig(input);
+    const net = cfg.payout - 1;
+    const factor = cycleCost(cfg.payout, cfg.rounds);
+    const rows = [];
+    let debt = 0;
+    for (let level = 0; level <= cfg.maxLevel; level++) {
+      for (let cycle = 0; cycle <= cfg.maxCycle; cycle++) {
+        const first = level === 0 && cycle === 0;
+        const mode = cycle === 0 ? cfg.levelMode :
+          level > 0 && cfg.levelMode === 'profit' ? 'profit' : cfg.cycleMode;
+        const target = mode === 'profit' ? net : 0;
+        const base = first ? 1 : (debt + target) / net;
+        const cost = base * factor;
+        debt += cost;
+        rows.push({ level, cycle, base, cost, cumulative: debt, target: first ? net : target });
+      }
+    }
+    return { config: cfg, rows, total: debt };
   }
 
   function project(source, input, gapLimit = 20, signalByRoundId = {}) {
@@ -40,16 +61,17 @@
     let missingSinceAnchor = 0;
     const maxGap = Math.max(0, Math.floor(Number(gapLimit) || 0));
 
-    function newCampaign() {
+    function newCampaign(signal) {
       return { level: 0, cycle: 0, position: 0, base: 1, profit: 0,
-        deltas: [], cycles: [], signal: null, estimated: false, waitingLevel: false };
+        deltas: [], cycles: [], signal: normaliseSignal(signal),
+        estimated: Boolean(signal?.estimated), waitingLevel: false };
     }
     function nextBase(current, mode) {
       const target = mode === 'profit' ? cfg.payout - 1 : 0;
       return Math.max(0, -current.profit + target) / (cfg.payout - 1);
     }
     function close(current, win, position, endId) {
-      return { win, position, endId, signal: current.signal || 'red',
+      return { win, position, endId, signal: current.signal,
         profit: current.profit, deltas: current.deltas,
         cycles: current.cycles, estimated: current.estimated };
     }
@@ -65,7 +87,7 @@
         campaign.profit += credit;
         campaign.cycles.push({ level: campaign.level, cycle: campaign.cycle, win: true, position: campaign.position });
         finished.push(close(campaign, true, campaign.position, roundId));
-        campaign = newCampaign();
+        campaign = newCampaign(signalByRoundId[roundId]);
       } else if (campaign.position === cfg.rounds) {
         campaign.cycles.push({ level: campaign.level, cycle: campaign.cycle, win: false, position: cfg.rounds });
         if (campaign.cycle < cfg.maxCycle) {
@@ -86,8 +108,6 @@
     }
     function settleTarget(row, distance, completed, missing) {
       const roundId = Number(row.round_id);
-      const signal = normaliseSignal(signalByRoundId[roundId] || row.signal_before);
-      if (campaign && !campaign.signal) campaign.signal = signal;
       if (campaign && missing) campaign.estimated = true;
       if (campaign?.waitingLevel) {
         campaign.waitingLevel = false;
@@ -95,7 +115,7 @@
       } else if (campaign) {
         bet(true, roundId, completed);
       } else {
-        campaign = newCampaign();
+        campaign = newCampaign(signalByRoundId[roundId]);
       }
       const wins = completed.filter(item => item.win);
       const position = wins.length ? wins.at(-1).position : 0;
@@ -105,7 +125,8 @@
         position <= third ? 'green' : position <= 2 * third ? 'yellow' : 'orange';
       events.push({ roundId, capturedAt: row.captured_at, row, label: distance,
         payoutLabel: Number(row.multiplier).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
-        color, signal, completed, missing, pending: false });
+        color, signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
+        completed, missing, pending: false });
     }
     function finishSegment() {
       if (!anchor || !lastRow || Number(lastRow.round_id) === Number(anchor.round_id)) return;
@@ -115,7 +136,8 @@
       for (let id = Number(anchor.round_id) + 1; id <= endId; id++) bet(false, id, completed);
       events.push({ roundId: endId, capturedAt: lastRow.captured_at, row: lastRow,
         label: endId - Number(anchor.round_id), payoutLabel: '',
-        color: completed.length ? 'red' : 'pending', signal: campaign?.signal || 'red',
+        color: completed.length ? 'red' : 'pending',
+        signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
         completed, missing: missingSinceAnchor, pending: true });
     }
 
@@ -134,14 +156,12 @@
       }
       if (!anchor) {
         anchor = row;
-        campaign = newCampaign();
+        campaign = newCampaign(signalByRoundId[id]);
         missingSinceAnchor = 0;
         continue;
       }
       const completed = [];
       const distance = id - Number(anchor.round_id);
-      if (campaign && !campaign.signal)
-        campaign.signal = normaliseSignal(signalByRoundId[id] || row.signal_before);
       if (campaign && missingSinceAnchor) campaign.estimated = true;
       for (let step = 1; step < distance; step++) bet(false, Number(anchor.round_id) + step, completed);
       settleTarget(row, distance, completed, missingSinceAnchor);
@@ -149,12 +169,15 @@
       missingSinceAnchor = 0;
     }
     finishSegment();
-    return { events, config: cfg, availableRounds: ordered.length };
+    return { events, config: cfg, availableRounds: ordered.length,
+      currentRun: anchor && lastRow ? Number(lastRow.round_id) - Number(anchor.round_id) : null,
+      pending: campaign ? { level: campaign.level, cycle: campaign.cycle,
+        position: campaign.position, waitingLevel: campaign.waitingLevel } : null };
   }
 
   function summarise(events, input) {
     const cfg = normaliseConfig(input);
-    const buckets = Object.fromEntries(['green', 'yellow', 'red'].map(key =>
+    const buckets = Object.fromEntries(['green', 'yellow', 'blue', 'red', 'unknown'].map(key =>
       [key, { wins: 0, losses: 0, profit: 0, cycleWins: Array(cfg.maxCycle + 1).fill(0) }]));
     const cells = Array.from({ length: cfg.maxLevel + 1 }, () =>
       Array.from({ length: cfg.maxCycle + 1 }, () => ({ wins: 0, losses: 0 })));
@@ -204,5 +227,5 @@
       outcomes };
   }
 
-  return { cycleCost, project, summarise };
+  return { cycleCost, exposure, project, summarise };
 });

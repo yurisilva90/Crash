@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { cycleCost, project, summarise } = require('../map-finance.js');
+const { cycleCost, exposure, project, summarise } = require('../map-finance.js');
 
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
 const stakeSum = (payout, count) => Array.from({ length: count }, (_, index) =>
@@ -83,7 +83,8 @@ test('recortes usam os mesmos eventos para placar, card, heatmap e níveis', () 
 
 test('loss é atribuído ao sinal da entrada, não automaticamente ao farol vermelho', () => {
   const configuration = cfg(30, 3);
-  const result = summarise(project(rows(5, [1, 5]), configuration, 0, { 5: 'green-loss' }).events, configuration);
+  const result = summarise(project(rows(5, [1, 5]), configuration, 0,
+    { 1: 'green', 5: 'red' }).events, configuration);
   assert.equal(result.buckets.green.losses, 1);
   assert.equal(result.buckets.red.losses, 0);
   near(result.buckets.green.profit, -cycleCost(30, 3));
@@ -117,4 +118,38 @@ test('N1 L mantém a meta de lucro mesmo quando o acerto chega em C1 do nível',
   assert.equal(result.cells[0][1].losses, 1);
   assert.equal(result.cells[1][0].losses, 1);
   assert.equal(result.cells[1][1].wins, 1);
+});
+
+test('exposição e histórico têm o mesmo custo quando todos C/N perdem', () => {
+  for (const cycleMode of ['recover', 'profit']) {
+    for (const levelMode of ['recover', 'profit']) {
+      const configuration = cfg(30, 3, 2, 1, cycleMode, levelMode);
+      const plan = exposure(configuration);
+      const result = summarise(project(rows(14, [1, 8]), configuration, 0).events, configuration);
+      near(result.profit, -plan.total);
+      assert.equal(plan.rows.length, 4);
+      assert.equal(result.cycleLosses, 4);
+    }
+  }
+});
+
+test('C1 em N1 segue R/L configurado no cabeçalho, inclusive modos mistos', () => {
+  for (const cycleMode of ['recover', 'profit']) {
+    for (const levelMode of ['recover', 'profit']) {
+      const configuration = cfg(30, 3, 2, 1, cycleMode, levelMode);
+      const result = summarise(project(rows(12, [1, 8, 12]), configuration, 0).events, configuration);
+      near(result.profit, cycleMode === 'profit' || levelMode === 'profit' ? 29 : 0);
+      assert.equal(result.cells[1][1].wins, 1);
+    }
+  }
+});
+
+test('cinco estados do farol preservam o total de wins, losses e resultado', () => {
+  const configuration = cfg(30, 3);
+  const source = rows(7, [1, 2, 7]);
+  const result = summarise(project(source, configuration, 0,
+    { 1: 'blue', 2: 'unknown', 7: 'yellow' }).events, configuration);
+  assert.equal(result.buckets.blue.wins, 1);
+  assert.equal(result.buckets.unknown.losses, 1);
+  near(Object.values(result.buckets).reduce((sum, bucket) => sum + bucket.profit, 0), result.profit);
 });
