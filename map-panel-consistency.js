@@ -11,6 +11,7 @@
   const tone = value => value > 1e-8 ? 'score-positive' : value < -1e-8 ? 'score-negative' : 'score-neutral';
   let cache = null;
   let historyCache = null;
+  let panelCache = null;
   let suppressLegacyMap = false;
 
   function windowSize() {
@@ -42,6 +43,20 @@
     const summary = finance.summarise(selected, cfg);
     const value = { selected, summary, cfg, gap, all, signals, source };
     cache = { key, value, snapshot };
+    return value;
+  }
+
+  function panelProjection() {
+    const source = filteredRows(rows);
+    const cfg = config();
+    const gap = simulationGapLimit();
+    const key = [source.length, source[0]?.round_id, source.at(-1)?.round_id,
+      cfg.payout, cfg.cycleRounds, cfg.recoveries, cfg.levels,
+      cfg.cycleMode, cfg.levelMode, gap].join('|');
+    if (panelCache?.key === key && panelCache.snapshot === snapshot) return panelCache.value;
+    const signals = frequency.calculate(source, cfg.payout, gap);
+    const value = { all: finance.project(source, cfg, gap, signals.byRoundId), source, cfg, gap };
+    panelCache = { key, snapshot, value };
     return value;
   }
   function drawBalls(selected) {
@@ -113,10 +128,11 @@
   function draw() {
     if (!snapshot) return;
     try {
-      const { selected, summary, cfg, gap, all, source } = projection();
+      const { selected, summary, cfg, gap, all } = projection();
+      const panel = panelProjection();
       drawBalls(selected);
-      drawRecent(all.events);
-      drawPanelCards(all, source, cfg);
+      drawRecent(panel.all.events);
+      drawPanelCards(panel.all, panel.source, panel.cfg);
       drawScore(summary, cfg);
       drawCycleTable(summary, cfg);
       drawMetrics(summary);
@@ -167,6 +183,10 @@
       noTarget.className = `signal ${tone}`;
       noTarget.textContent = run == null ? '—' : int(run);
     }
+    const riskNote = document.querySelector('#riskNote');
+    if (riskNote) riskNote.textContent = `${cfg.payout}x · ${cfg.cycleRounds}R`;
+    const riskStats = document.querySelector('#riskStats');
+    if (riskStats) riskStats.textContent = '';
     const outcomes = all.events.flatMap(event => event.completed || []);
     let streak = 0;
     for (let index = outcomes.length - 1; index >= 0 && outcomes[index].win; index--) streak++;
@@ -182,6 +202,8 @@
     if (recoveryNote) recoveryNote.textContent = state?.waitingLevel
       ? `Aguardando alvo para N${state.level}` : state
         ? `N${state.level} · C${state.cycle} · ${cfg.cycleRounds}R` : 'Sem recuperação ativa';
+    const recoveryStats = document.querySelector('#recoveryStats');
+    if (recoveryStats) recoveryStats.textContent = '';
   }
 
   function drawHistory(cfg, gap) {

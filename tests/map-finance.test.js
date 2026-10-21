@@ -46,6 +46,19 @@ test('C1 R recupera a perda de C0; C1 L recupera e lucra uma unidade de payout',
   }
 });
 
+test('a cor da bolinha representa o ciclo, não uma faixa antiga dentro de R', () => {
+  const configuration = cfg(30, 31, 2);
+  const c1 = project(rows(35, [1, 35]), configuration, 0).events.at(-1);
+  assert.equal(c1.label, 34);
+  assert.equal(c1.color, 'yellow');
+
+  const c2 = project(rows(44, [1, 44]), cfg(30, 21, 3), 0).events.at(-1);
+  assert.equal(c2.color, 'orange');
+
+  const levelC0 = project(rows(64, [1, 33, 64]), cfg(30, 31, 1, 1), 0).events.at(-1);
+  assert.equal(levelC0.color, 'green');
+});
+
 test('N1 só começa depois do próximo alvo e respeita R/L do nível', () => {
   for (const [mode, expected] of [['recover', 0], ['profit', 29]]) {
     const configuration = cfg(30, 3, 1, 1, 'recover', mode);

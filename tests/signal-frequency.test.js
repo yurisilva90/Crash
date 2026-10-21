@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { thresholds, classify, calculate } = require('../signal-frequency.js');
+const { thresholds, classify, calculate, latestWindows } = require('../signal-frequency.js');
 
 const rows = (hits, count = 1000) => Array.from({ length: count }, (_, index) => ({
   round_id: index + 1,
@@ -35,4 +35,19 @@ test('gap longo reinicia as janelas e gap curto sinaliza estimativa', () => {
   const short = calculate([...base, { round_id: 1002, multiplier: 1 }], 30, 20);
   assert.equal(short.last.tone, 'red');
   assert.equal(short.last.estimated, true);
+});
+
+test('cartão de frequência usa os mesmos IDs e gaps do farol', () => {
+  const source = [
+    { round_id: 1, multiplier: 30 },
+    { round_id: 2, multiplier: 1 },
+    { round_id: 4, multiplier: 30 }
+  ];
+  const joined = latestWindows(source, 30, 2, [4])[0];
+  assert.equal(joined.available, 4);
+  assert.equal(joined.hits, 2);
+  assert.equal(joined.estimated, true);
+  const split = latestWindows(source, 30, 0, [4])[0];
+  assert.equal(split.available, 1);
+  assert.equal(split.hits, 1);
 });

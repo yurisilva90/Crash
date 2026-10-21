@@ -8,6 +8,13 @@
   const SHORT = 250;
   const LONG = 1000;
 
+  function orderedRows(source) {
+    return [...new Map((source || [])
+      .filter(row => Number.isFinite(Number(row?.round_id)) && Number.isFinite(Number(row?.multiplier)))
+      .map(row => [Number(row.round_id), row])).values()]
+      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
+  }
+
   function thresholds(payout) {
     const target = Math.max(1.01, Number(payout) || 30);
     return { short: Math.ceil(SHORT * .99 / target), long: Math.ceil(LONG * .99 / target) };
@@ -22,10 +29,7 @@
   }
 
   function calculate(source, payout, gapLimit = 20) {
-    const ordered = [...new Map((source || [])
-      .filter(row => Number.isFinite(Number(row?.round_id)) && Number.isFinite(Number(row?.multiplier)))
-      .map(row => [Number(row.round_id), row])).values()]
-      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
+    const ordered = orderedRows(source);
     const target = Math.max(1.01, Number(payout) || 30);
     const limit = Math.max(0, Math.floor(Number(gapLimit) || 0));
     const minimum = thresholds(target);
@@ -64,5 +68,29 @@
     return { byRoundId, last, availableRounds: ordered.length };
   }
 
-  return { thresholds, classify, calculate };
+  function latestWindows(source, payout, gapLimit = 20, sizes = [100, 250, 1000, 2000, 5000]) {
+    const ordered = orderedRows(source);
+    const target = Math.max(1.01, Number(payout) || 30);
+    const limit = Math.max(0, Math.floor(Number(gapLimit) || 0));
+    let segmentStart = 0;
+    for (let index = 1; index < ordered.length; index++) {
+      if (Number(ordered[index].round_id) - Number(ordered[index - 1].round_id) - 1 > limit)
+        segmentStart = index;
+    }
+    const segment = ordered.slice(segmentStart);
+    const lastId = Number(segment.at(-1)?.round_id);
+    return sizes.map(size => {
+      const windowSize = Math.max(1, Math.floor(Number(size) || 1));
+      const firstId = lastId - windowSize + 1;
+      const sample = segment.filter(row => Number(row.round_id) >= firstId);
+      const available = segment.length ? Math.min(windowSize,
+        lastId - Number(segment[0].round_id) + 1) : 0;
+      const hits = sample.filter(row => Number(row.multiplier) >= target).length;
+      const minimum = Math.ceil(windowSize * .99 / target);
+      return { windowSize, hits, minimum, available, ready: available === windowSize,
+        estimated: available > sample.length };
+    });
+  }
+
+  return { thresholds, classify, calculate, latestWindows };
 });

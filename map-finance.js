@@ -75,6 +75,15 @@
         profit: current.profit, deltas: current.deltas,
         cycles: current.cycles, estimated: current.estimated };
     }
+    function colorForCompleted(completed) {
+      const outcome = completed.at(-1);
+      if (!outcome) return 'pending';
+      if (!outcome.win) return 'red';
+      const cycle = outcome.cycles.at(-1)?.cycle || 0;
+      // A cor representa somente onde o win aconteceu dentro da sequência C0/C1/C2.
+      // O nível não altera a cor: N1C0 continua verde, N1C1 amarelo e assim por diante.
+      return cycle === 0 ? 'green' : cycle === 1 ? 'yellow' : 'orange';
+    }
     function bet(targetHit, roundId, finished) {
       if (!campaign || campaign.waitingLevel) return;
       const stake = campaign.base * factor ** campaign.position;
@@ -117,15 +126,10 @@
       } else {
         campaign = newCampaign(signalByRoundId[roundId]);
       }
-      const wins = completed.filter(item => item.win);
-      const position = wins.length ? wins.at(-1).position : 0;
-      const third = Math.ceil(cfg.rounds / 3);
-      const color = completed.length && !wins.length ? 'red' :
-        distance > cfg.rounds ? 'red' :
-        position <= third ? 'green' : position <= 2 * third ? 'yellow' : 'orange';
       events.push({ roundId, capturedAt: row.captured_at, row, label: distance,
         payoutLabel: Number(row.multiplier).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
-        color, signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
+        color: colorForCompleted(completed),
+        signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
         completed, missing, pending: false });
     }
     function finishSegment() {
@@ -136,7 +140,7 @@
       for (let id = Number(anchor.round_id) + 1; id <= endId; id++) bet(false, id, completed);
       events.push({ roundId: endId, capturedAt: lastRow.captured_at, row: lastRow,
         label: endId - Number(anchor.round_id), payoutLabel: '',
-        color: completed.length ? 'red' : 'pending',
+        color: colorForCompleted(completed),
         signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
         completed, missing: missingSinceAnchor, pending: true });
     }
