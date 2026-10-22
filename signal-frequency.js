@@ -92,5 +92,59 @@
     });
   }
 
-  return { thresholds, classify, calculate, latestWindows };
+  function classifyTrend(ratio) {
+    if (!Number.isFinite(ratio)) return 0;
+    if (ratio >= 1.2) return 2;
+    if (ratio >= 1.1) return 1;
+    if (ratio <= 0.8) return -2;
+    if (ratio <= 0.9) return -1;
+    return 0;
+  }
+
+  // A tendência é observada no payout-âncora, antes da primeira aposta do ciclo.
+  // A referência é a frequência histórica acumulada até antes dessa rodada.
+  function trendAtAnchors(source, payout, gapLimit = 20, windowSize = 500, minHistory = 5000) {
+    const ordered = orderedRows(source);
+    const target = Math.max(1.01, Number(payout) || 30);
+    const limit = Math.max(0, Math.floor(Number(gapLimit) || 0));
+    const window = Math.max(1, Math.floor(Number(windowSize) || 500));
+    const minimum = Math.max(window, Math.floor(Number(minHistory) || 5000));
+    const byRoundId = {};
+    let previous = null, historicalCount = 0, historicalHits = 0;
+    let hitPrefix = [0], missingPrefix = [0];
+    for (const row of ordered) {
+      const id = Number(row.round_id);
+      if (previous !== null) {
+        const missing = id - previous - 1;
+        if (missing > limit) {
+          hitPrefix = [0];
+          missingPrefix = [0];
+        } else {
+          for (let step = 0; step < missing; step++) {
+            hitPrefix.push(hitPrefix.at(-1));
+            missingPrefix.push(missingPrefix.at(-1) + 1);
+            historicalCount++;
+          }
+        }
+      }
+      const hit = Number(row.multiplier) >= target;
+      const baseline = historicalCount >= minimum ? historicalHits / historicalCount : null;
+      hitPrefix.push(hitPrefix.at(-1) + Number(hit));
+      missingPrefix.push(missingPrefix.at(-1));
+      historicalCount++;
+      historicalHits += Number(hit);
+      if (hit) {
+        const ready = hitPrefix.length - 1 >= window && baseline > 0;
+        const recentHits = ready ? hitPrefix.at(-1) - hitPrefix.at(-1 - window) : 0;
+        const ratio = ready ? (recentHits / window) / baseline : null;
+        const estimated = ready && missingPrefix.at(-1) > missingPrefix.at(-1 - window);
+        byRoundId[id] = { level: classifyTrend(ratio), ratio, recentHits,
+          baseline, windowSize: window, ready, estimated };
+      }
+      previous = id;
+    }
+    return { byRoundId, windowSize: window, minHistory: minimum };
+  }
+
+  return { thresholds, classify, calculate, latestWindows, classifyTrend, trendAtAnchors };
 });

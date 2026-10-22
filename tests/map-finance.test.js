@@ -26,6 +26,14 @@ test('30x/21R: um win limpo e um loss custam a progressão inteira', () => {
   near(Object.values(result.buckets).reduce((sum, bucket) => sum + bucket.profit, 0), result.profit);
 });
 
+test('bolinha preserva o payout-âncora anterior para a tendência pré-ciclo', () => {
+  const report = project(rows(5, [1, 3, 5]), cfg(30, 21), 0);
+  assert.equal(report.events[0].anchorRoundId, 1);
+  assert.equal(report.events[0].roundId, 3);
+  assert.equal(report.events[1].anchorRoundId, 3);
+  assert.equal(report.events[1].roundId, 5);
+});
+
 test('20x/21R usa fator e custo próprios, não o de 30x', () => {
   const configuration = cfg(20, 21);
   const result = summarise(project(rows(24, [1, 2, 24], 20), configuration, 0).events, configuration);

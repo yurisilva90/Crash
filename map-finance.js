@@ -127,7 +127,7 @@
       } else {
         campaign = newCampaign(signalByRoundId[roundId]);
       }
-      events.push({ roundId, capturedAt: row.captured_at, row, label: distance,
+      events.push({ roundId, anchorRoundId: Number(anchor.round_id), capturedAt: row.captured_at, row, label: distance,
         payoutLabel: Number(row.multiplier).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
         color: colorForCompleted(completed),
         signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
@@ -139,7 +139,7 @@
       const endId = Number(lastRow.round_id);
       if (campaign && missingSinceAnchor) campaign.estimated = true;
       for (let id = Number(anchor.round_id) + 1; id <= endId; id++) bet(false, id, completed);
-      events.push({ roundId: endId, capturedAt: lastRow.captured_at, row: lastRow,
+      events.push({ roundId: endId, anchorRoundId: Number(anchor.round_id), capturedAt: lastRow.captured_at, row: lastRow,
         label: endId - Number(anchor.round_id), payoutLabel: '',
         color: colorForCompleted(completed),
         signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',

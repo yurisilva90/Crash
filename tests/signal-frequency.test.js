@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { thresholds, classify, calculate, latestWindows } = require('../signal-frequency.js');
+const { thresholds, classify, calculate, latestWindows, classifyTrend, trendAtAnchors } = require('../signal-frequency.js');
 
 const rows = (hits, count = 1000) => Array.from({ length: count }, (_, index) => ({
   round_id: index + 1,
@@ -50,4 +50,25 @@ test('cartão de frequência usa os mesmos IDs e gaps do farol', () => {
   const split = latestWindows(source, 30, 0, [4])[0];
   assert.equal(split.available, 1);
   assert.equal(split.hits, 1);
+});
+
+test('setas de tendência usam somente uma ou duas marcas, inclusive além de 30%', () => {
+  assert.equal(classifyTrend(1.09), 0);
+  assert.equal(classifyTrend(1.1), 1);
+  assert.equal(classifyTrend(1.2), 2);
+  assert.equal(classifyTrend(1.4), 2);
+  assert.equal(classifyTrend(0.91), 0);
+  assert.equal(classifyTrend(0.9), -1);
+  assert.equal(classifyTrend(0.8), -2);
+  assert.equal(classifyTrend(0.6), -2);
+});
+
+test('tendência da âncora não usa resultados posteriores e separa gaps longos', () => {
+  const base = rows(new Set(Array.from({ length: 275 }, (_, index) => 20 * (index + 1))), 5500);
+  const state = trendAtAnchors(base, 30, 20, 500, 5000);
+  assert.equal(state.byRoundId[5500].ready, true);
+  assert.equal(state.byRoundId[5500].recentHits, 25);
+  assert.equal(state.byRoundId[5500].level, 0);
+  const afterGap = trendAtAnchors([...base, { round_id: 5525, multiplier: 30 }], 30, 20, 500, 5000);
+  assert.equal(afterGap.byRoundId[5525].ready, false);
 });

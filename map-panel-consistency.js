@@ -12,7 +12,33 @@
   let cache = null;
   let historyCache = null;
   let panelCache = null;
+  let trendCache = null;
   let suppressLegacyMap = false;
+
+  function trendRecords(payout, gap) {
+    const sources = [historicalRows, mapRows, rows];
+    const key = [...sources.map(source => `${source?.length || 0}:${source?.[0]?.round_id || ''}:${source?.at(-1)?.round_id || ''}`), payout, gap].join('|');
+    if (trendCache?.key === key && trendCache.snapshot === snapshot) return trendCache.value;
+    const combined = new Map();
+    for (const source of sources) {
+      for (const row of source || []) combined.set(Number(row.round_id), row);
+    }
+    const source = [...combined.values()].filter(row => Number.isFinite(Number(row.round_id)));
+    const value = frequency.trendAtAnchors(source, payout, gap, 500, 5000).byRoundId;
+    trendCache = { key, snapshot, value };
+    return value;
+  }
+
+  function trendStamp(event, records) {
+    if (activeStrategy === '2x') return '';
+    const trend = records[event.anchorRoundId];
+    if (!trend?.level) return '';
+    const direction = trend.level > 0 ? 'up' : 'down';
+    const steps = Math.abs(trend.level);
+    const threshold = steps === 2 ? 20 : 10;
+    const label = `Frequência ${direction === 'up' ? 'acima' : 'abaixo'} da média histórica em pelo menos ${threshold}% nas 500 rodadas antes do ciclo${trend.estimated ? ' (estimada por gaps)' : ''}`;
+    return `<span class="frequency-stamp ${direction}" aria-label="${label}" title="${label}">${'<i></i>'.repeat(steps)}</span>`;
+  }
 
   function windowSize() {
     return window.mapPanelWindow === Infinity ? Infinity : Math.max(1, Number(window.mapPanelWindow) || 50);
@@ -59,7 +85,7 @@
     panelCache = { key, snapshot, value };
     return value;
   }
-  function drawBalls(selected) {
+  function drawBalls(selected, trends) {
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
@@ -72,7 +98,7 @@
       const signal = event.signal === 'green' ? 'green-win' : event.signal;
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
-      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}</span>`;
+      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(summary, cfg) {
@@ -130,8 +156,9 @@
     try {
       const { selected, summary, cfg, gap, all } = projection();
       const panel = panelProjection();
-      drawBalls(selected);
-      drawRecent(panel.all.events);
+      const trends = activeStrategy === '2x' ? {} : trendRecords(cfg.payout, gap);
+      drawBalls(selected, trends);
+      drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
       drawScore(summary, cfg);
       drawCycleTable(summary, cfg);
@@ -152,7 +179,7 @@
     }
   }
 
-  function drawRecent(events) {
+  function drawRecent(events, trends) {
     if (activeStrategy === '2x') return;
     const target = document.querySelector('#recentBalls');
     if (!target) return;
@@ -163,7 +190,7 @@
       const signal = event.signal === 'green' ? 'green-win' : event.signal;
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
-      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}</span>`;
+      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
     }).join('');
   }
 
@@ -293,7 +320,13 @@
     html[data-theme="light"] .speed-ring.frequency-red{background:radial-gradient(circle at center,#fff 61%,transparent 62%),conic-gradient(var(--red) var(--meter),#d8e2ed 0)}
     html[data-theme="light"] .speed-ring.frequency-unknown{background:radial-gradient(circle at center,#fff 61%,transparent 62%),conic-gradient(var(--muted) var(--meter),#d8e2ed 0)}
     #confirmShort.frequency-active{border-color:var(--yellow);color:var(--yellow)}
-    #confirmLong.frequency-active{border-color:var(--blue);color:var(--blue)}`;
+    #confirmLong.frequency-active{border-color:var(--blue);color:var(--blue)}
+    #balls .ball,#recentBalls .ball{overflow:visible}
+    .ball .frequency-stamp{position:absolute;z-index:3;top:-4px;right:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:11px;padding:2px 1px;border-radius:6px;border:1px solid rgba(148,235,187,.55);background:rgba(9,45,48,.94);pointer-events:none}
+    .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
+    .ball .frequency-stamp i+i{margin-top:-1px}
+    .ball .frequency-stamp.down{border-color:rgba(255,148,166,.55);background:rgba(53,24,35,.94)}
+    .ball .frequency-stamp.down i{background:#fb8299;clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}`;
   document.head.append(style);
 
   function installFarol() {
