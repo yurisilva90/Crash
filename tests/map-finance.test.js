@@ -46,6 +46,22 @@ test('C1 R recupera a perda de C0; C1 L recupera e lucra uma unidade de payout',
   }
 });
 
+test('divisor da perda altera igualmente C1, N1 e a exposição, sem mudar C0', () => {
+  const firstLoss = cycleCost(30, 3);
+  for (const divider of [1, 1.5, 2, 3]) {
+    for (const mode of ['recover', 'profit']) {
+      const target = mode === 'profit' ? 29 : 0;
+      const cycle = { ...cfg(30, 3, 2, 0, mode), recoveryDivider: divider };
+      const level = { ...cfg(30, 3, 1, 1, 'recover', mode), recoveryDivider: divider };
+      const expected = -firstLoss * (1 - 1 / divider) + target;
+      near(summarise(project(rows(5, [1, 5]), cycle, 0).events, cycle).profit, expected);
+      near(summarise(project(rows(6, [1, 5, 6]), level, 0).events, level).profit, expected);
+      near(exposure(cycle).rows[0].base, 1);
+      near(exposure(cycle).rows[1].base, (firstLoss / divider + target) / 29);
+    }
+  }
+});
+
 test('a cor da bolinha representa o ciclo, não uma faixa antiga dentro de R', () => {
   const configuration = cfg(30, 31, 2);
   const c1 = project(rows(35, [1, 35]), configuration, 0).events.at(-1);

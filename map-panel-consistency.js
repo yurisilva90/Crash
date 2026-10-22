@@ -34,7 +34,7 @@
     const gap = simulationGapLimit();
     const key = [source.length, source[0]?.round_id, source.at(-1)?.round_id,
       cfg.payout, cfg.cycleRounds, cfg.recoveries, cfg.levels,
-      cfg.cycleMode, cfg.levelMode, gap, windowSize()].join('|');
+      cfg.cycleMode, cfg.levelMode, cfg.recoveryDivider, gap, windowSize()].join('|');
     if (cache?.key === key && cache.snapshot === snapshot) return cache.value;
     const signals = frequency.calculate(source, cfg.payout, gap);
     const all = finance.project(source, cfg, gap, signals.byRoundId);
@@ -52,7 +52,7 @@
     const gap = simulationGapLimit();
     const key = [source.length, source[0]?.round_id, source.at(-1)?.round_id,
       cfg.payout, cfg.cycleRounds, cfg.recoveries, cfg.levels,
-      cfg.cycleMode, cfg.levelMode, gap].join('|');
+      cfg.cycleMode, cfg.levelMode, cfg.recoveryDivider, gap].join('|');
     if (panelCache?.key === key && panelCache.snapshot === snapshot) return panelCache.value;
     const signals = frequency.calculate(source, cfg.payout, gap);
     const value = { all: finance.project(source, cfg, gap, signals.byRoundId), source, cfg, gap };
@@ -212,7 +212,7 @@
     const sample = activeWindow === Infinity ? base : base.slice(-activeWindow);
     const key = [historyTab, activeWindow, sample.length, sample[0]?.round_id,
       sample.at(-1)?.round_id, cfg.payout, cfg.cycleRounds, cfg.recoveries,
-      cfg.levels, cfg.cycleMode, cfg.levelMode, gap].join('|');
+      cfg.levels, cfg.cycleMode, cfg.levelMode, cfg.recoveryDivider, gap].join('|');
     let summary = historyCache?.key === key && historyCache.snapshot === snapshot
       ? historyCache.summary : null;
     if (!summary) {

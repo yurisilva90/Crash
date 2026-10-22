@@ -16,6 +16,7 @@
       rounds: Math.max(1, Math.floor(Number(input.cycleRounds) || 21)),
       maxCycle: Math.max(0, Math.floor(Number(input.recoveries || 1) - 1)),
       maxLevel: Math.max(0, Math.floor(Number(input.levels) || 0)),
+      recoveryDivider: Math.max(1, Number(input.recoveryDivider) || 1),
       cycleMode: input.cycleMode === 'profit' ? 'profit' : 'recover',
       levelMode: input.levelMode === 'profit' ? 'profit' : 'recover'
     };
@@ -38,7 +39,7 @@
         const mode = cycle === 0 ? cfg.levelMode :
           level > 0 && cfg.levelMode === 'profit' ? 'profit' : cfg.cycleMode;
         const target = mode === 'profit' ? net : 0;
-        const base = first ? 1 : (debt + target) / net;
+        const base = first ? 1 : (debt / cfg.recoveryDivider + target) / net;
         const cost = base * factor;
         debt += cost;
         rows.push({ level, cycle, base, cost, cumulative: debt, target: first ? net : target });
@@ -68,7 +69,7 @@
     }
     function nextBase(current, mode) {
       const target = mode === 'profit' ? cfg.payout - 1 : 0;
-      return Math.max(0, -current.profit + target) / (cfg.payout - 1);
+      return Math.max(0, -current.profit / cfg.recoveryDivider + target) / (cfg.payout - 1);
     }
     function close(current, win, position, endId) {
       return { win, position, endId, signal: current.signal,

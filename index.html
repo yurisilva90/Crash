@@ -415,7 +415,7 @@ function renderExposureCalculator(){
   const money=value=>Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' BCD';
   const html=plan.rows.map(row=>`<div class="expected-row"><span>N${row.level} · C${row.cycle}</span><span>${money(row.cost)}</span><span>${money(row.cumulative)}</span></div>`).join('');
   const bank=Number(document.querySelector('#exBank').value)||0;
-  const summary=`${payout.toLocaleString('pt-BR')}x · ${rounds}R · C0–C${maxCycle} ${cycleMode==='profit'?'L':'R'} · N0–N${maxLevel} ${levelMode==='profit'?'L':'R'}`;
+  const summary=`${payout.toLocaleString('pt-BR')}x · ${rounds}R · C0–C${maxCycle} ${cycleMode==='profit'?'L':'R'} · N0–N${maxLevel} ${levelMode==='profit'?'L':'R'} · perda ÷ ${plan.config.recoveryDivider.toLocaleString('pt-BR')}`;
   const simSummary=document.querySelector('#simulationConfigSummary'),recSummary=document.querySelector('#recoveryConfigSummary');
   if(simSummary)simSummary.textContent=`Configuração global: ${summary}`;
   if(recSummary)recSummary.textContent=`Configuração global: ${summary}`;
@@ -461,6 +461,37 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
 </script><style>.vps-modal{position:absolute;z-index:40;top:42px;right:0;width:min(330px,calc(100vw - 28px));padding:13px;border:1px solid var(--line);border-radius:12px;background:#0b1929;box-shadow:0 14px 40px rgba(0,0,0,.42)}.vps-modal[hidden]{display:none}.vps-modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.vps-modal-head strong{font-size:.82rem}.vps-modal-close{border:0;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer}.vps-modal .collector-controls{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.vps-modal .collector-controls button{padding:8px 6px}.vps-modal .collector-token-editor{margin-top:8px}.vps-modal .collector-feedback{display:block;width:100%;margin-top:8px;text-align:center;white-space:normal;text-wrap:balance;overflow-wrap:anywhere;line-height:1.35}</style><script>
 (()=>{const oldFilter=document.querySelector('#filterNow'),controls=document.querySelector('.collector-controls'),top=document.querySelector('.top');if(!oldFilter||!controls||!top)return;oldFilter.hidden=true;const menu=document.createElement('button');menu.id='vpsCommands';menu.className='refresh-button';menu.type='button';menu.setAttribute('aria-label','Comandos da VPS');menu.title='Comandos da VPS';menu.textContent='🖥';oldFilter.parentNode.insertBefore(menu,oldFilter);const modal=document.createElement('section');modal.className='vps-modal';modal.hidden=true;modal.setAttribute('aria-label','Comandos da VPS');const head=document.createElement('div');head.className='vps-modal-head';head.innerHTML='<strong>Comandos da VPS</strong><button type="button" class="vps-modal-close" aria-label="Fechar">×</button>';modal.append(head,controls);top.append(modal);const close=()=>{modal.hidden=true};menu.addEventListener('click',event=>{event.preventDefault();modal.hidden=!modal.hidden});head.querySelector('.vps-modal-close').addEventListener('click',close);document.addEventListener('pointerdown',event=>{if(!modal.hidden&&!modal.contains(event.target)&&event.target!==menu)close()})})();
 </script><script>document.querySelector('#refreshNow')?.remove();const icon=(body,label)=>`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><title>${label}</title>${body}</svg>`;const pc=document.querySelector('#vpsCommands');if(pc)pc.innerHTML=icon('<rect x="3" y="4" width="18" height="12" rx="1.5"></rect><path d="M8 20h8M12 16v4"></path>','Comandos da VPS');const configButton=document.querySelector('#configNow');if(configButton)configButton.innerHTML=icon('<path d="M12 3.5l1.2 1.8 2.1.3.9 1.9 1.9.9-.3 2.1 1.8 1.2-1.8 1.2.3 2.1-1.9.9-.9 1.9-2.1.3L12 20.5l-1.2-1.8-2.1-.3-.9-1.9-1.9-.9.3-2.1-1.8-1.2 1.8-1.2-.3-2.1 1.9-.9.9-1.9 2.1-.3L12 3.5z"></path><circle cx="12" cy="12" r="2.6"></circle>','Configurar estratégia');</script>
+<style>
+  .strategy-quick-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .strategy-quick-field.recovery-divider-field input{box-sizing:border-box;width:100%;min-height:34px;padding:.38rem .45rem;border:1px solid var(--line);border-radius:8px;background:#081625;color:var(--text);font:inherit;font-size:.78rem}
+  @media(max-width:720px){.strategy-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  html[data-theme="light"] .strategy-quick-field.recovery-divider-field input{background:#fff;color:var(--text)}
+</style>
+<script>
+(()=>{
+  const grid=document.querySelector('.strategy-quick-grid');
+  if(!grid)return;
+  const field=document.createElement('div');
+  field.className='strategy-quick-field recovery-divider-field';
+  field.innerHTML='<label for="quickRecoveryDivider">Perda ÷</label><input id="quickRecoveryDivider" type="text" inputmode="decimal" value="1" aria-label="Dividir o prejuízo da recuperação: 1 cobre tudo, 2 cobre metade">';
+  grid.append(field);
+  const input=field.querySelector('input');
+  const saved=Number(localStorage.getItem('crash-recovery-divider-v1'));
+  if(Number.isFinite(saved)&&saved>=1)input.value=String(saved);
+  const originalConfig=config;
+  const parsed=()=>Number(input.value.trim().replace(',','.'));
+  config=function(){return {...originalConfig(),recoveryDivider:Math.max(1,parsed()||1)}};
+  const update=()=>{
+    const value=Math.max(1,parsed()||1);
+    input.value=value.toLocaleString('pt-BR',{maximumFractionDigits:3});
+    localStorage.setItem('crash-recovery-divider-v1',String(value));
+    if(typeof render==='function')render();
+    if(typeof renderSimulationMetrics==='function')renderSimulationMetrics();
+    if(typeof renderExposureCalculator==='function')renderExposureCalculator();
+  };
+  input.addEventListener('change',update);
+})();
+</script>
 <script src="map-finance.js"></script><script src="signal-frequency.js"></script><script src="map-panel-consistency.js"></script></body></html>
 
 
