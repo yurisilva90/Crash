@@ -4,7 +4,6 @@
   const frequency = globalThis.CrashSignalFrequency;
   if (!finance) throw new Error('O módulo financeiro do mapa não foi carregado');
   if (!frequency) throw new Error('O módulo de frequência do farol não foi carregado');
-  const keys = ['green', 'yellow', 'blue', 'red', 'unknown'];
   const int = value => Number(value).toLocaleString('pt-BR');
   const pct = (value, total) => total ? `${(100 * value / total).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '—';
   const units = value => `(${value < -1e-8 ? '-' : '+'}${Math.abs(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
@@ -14,6 +13,28 @@
   let panelCache = null;
   let trendCache = null;
   let suppressLegacyMap = false;
+  const mapColumnState = {
+    dimension: localStorage.getItem('crash-map-column-dimension-v1') || 'frequency',
+    selected: null,
+    layout: localStorage.getItem('crash-map-column-layout-v1') || 'highlight'
+  };
+
+  function trendBucket(event, records) {
+    const level = Number(records?.[event.anchorRoundId]?.level) || 0;
+    if (!level) return 'flat';
+    const direction = level > 0 ? 'up' : 'down';
+    return `${direction}${Math.min(2, Math.abs(level))}`;
+  }
+
+  function payoutBucket(event) {
+    return ['green', 'yellow', 'blue', 'red'].includes(event.signal) ? event.signal : 'unknown';
+  }
+
+  function bucketFor(event, records) {
+    return mapColumnState.dimension === 'frequency'
+      ? trendBucket(event, records)
+      : payoutBucket(event);
+  }
 
   function trendRecords(payout, gap) {
     const sources = [historicalRows, mapRows, rows];
@@ -92,7 +113,10 @@
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
-    const visible = selected.slice(-1000).reverse();
+    const selectedBucket = mapColumnState.selected;
+    const matching = event => !selectedBucket || bucketFor(event, trends) === selectedBucket;
+    const visible = (mapColumnState.layout === 'grouped' && selectedBucket
+      ? selected.filter(matching) : selected).slice(-1000).reverse();
     target.classList.remove('compact-2x');
     target.innerHTML = visible.map(event => {
       const row = event.row || {};
@@ -101,18 +125,40 @@
       const signal = event.signal === 'green' ? 'green-win' : event.signal;
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
-      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
+      const muted = selectedBucket && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-column-muted' : '';
+      return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
-  function drawScore(summary, cfg) {
+  function drawScore(selected, cfg, trends) {
     const target = document.querySelector('#signalScore');
     if (!target) return;
+    const frequencyColumns = [
+      ['up1', 'Frequência +10%', 'up', 1], ['up2', 'Frequência +20% ou mais', 'up', 2],
+      ['flat', 'Frequência dentro da média', 'flat', 0],
+      ['down1', 'Frequência −10%', 'down', 1], ['down2', 'Frequência −20% ou menos', 'down', 2]
+    ];
+    const payoutColumns = [
+      ['green', '250 e 1.000 ativos', 'green'], ['yellow', 'Somente 250 ativo', 'yellow'],
+      ['blue', 'Somente 1.000 ativo', 'blue'], ['red', 'Nenhum payout ativo', 'red'],
+      ['unknown', 'Sem referência suficiente', 'unknown']
+    ];
+    const columns = mapColumnState.dimension === 'frequency' ? frequencyColumns : payoutColumns;
+    const groups = Object.fromEntries(columns.map(([key]) => [key, []]));
+    for (const event of selected) groups[bucketFor(event, trends)]?.push(event);
+    const summaries = Object.fromEntries(columns.map(([key]) => [key, finance.summarise(groups[key], cfg)]));
+    const summary = finance.summarise(selected, cfg);
     const total = summary.wins + summary.losses;
+    const marker = ([key, label, direction, steps]) => {
+      const isFrequency = mapColumnState.dimension === 'frequency';
+      const stamp = isFrequency && direction !== 'flat'
+        ? `<span class="frequency-stamp ${direction}">${'<i></i>'.repeat(steps)}</span>` : '';
+      return `<button type="button" class="map-column-marker ${isFrequency ? 'frequency-marker' : `signal-${key}`} ${mapColumnState.selected === key ? 'selected' : ''}" data-map-column="${key}" aria-pressed="${mapColumnState.selected === key}" aria-label="${label}" title="${label}">${stamp}</button>`;
+    };
     const cell = (key, field, showProfit = false) => {
-      const bucket = summary.buckets[key];
+      const bucket = summaries[key];
       const number = field === 'wins' ? bucket.wins : bucket.losses;
       const bucketTotal = bucket.wins + bucket.losses;
-      return `<td><strong class="${showProfit ? tone(bucket.profit) : ''}">${int(number)}</strong><small>${pct(number, bucketTotal)}</small>${showProfit ? `<small class="score-profit ${tone(bucket.profit)}">${summary.estimated ? '≈' : ''}${units(bucket.profit)}</small>` : ''}</td>`;
+      return `<td><strong class="${showProfit ? tone(bucket.profit) : ''}">${int(number)}</strong><small>${pct(number, bucketTotal)}</small>${showProfit ? `<small class="score-profit ${tone(bucket.profit)}">${bucket.estimated ? '≈' : ''}${units(bucket.profit)}</small>` : ''}</td>`;
     };
     const overall = (field, showProfit = false) => {
       const number = summary[field];
@@ -121,12 +167,27 @@
     const cycleRows = Array.from({ length: cfg.recoveries }, (_, cycle) => {
       const begin = cycle * cfg.cycleRounds + 1;
       const end = (cycle + 1) * cfg.cycleRounds;
-      const count = keys.reduce((sum, key) => sum + (summary.buckets[key].cycleWins[cycle] || 0), 0);
-      return `<tr><th>${begin}–${end}</th>${keys.map(key => `<td>${int(summary.buckets[key].cycleWins[cycle] || 0)}</td>`).join('')}<td>${int(count)}</td></tr>`;
+      const count = columns.reduce((sum, [key]) => sum + (summaries[key].buckets.green.cycleWins[cycle] || 0) + (summaries[key].buckets.yellow.cycleWins[cycle] || 0) + (summaries[key].buckets.blue.cycleWins[cycle] || 0) + (summaries[key].buckets.red.cycleWins[cycle] || 0) + (summaries[key].buckets.unknown.cycleWins[cycle] || 0), 0);
+      return `<tr><th>${begin}–${end}</th>${columns.map(([key]) => `<td>${int(summaries[key].buckets.green.cycleWins[cycle] + summaries[key].buckets.yellow.cycleWins[cycle] + summaries[key].buckets.blue.cycleWins[cycle] + summaries[key].buckets.red.cycleWins[cycle] + summaries[key].buckets.unknown.cycleWins[cycle])}</td>`).join('')}<td>${int(count)}</td></tr>`;
     }).join('');
-    const labels = { green: '250 e 1.000', yellow: 'Só 250', blue: 'Só 1.000', red: 'Nenhum', unknown: 'Sem dados' };
-    const headings = keys.map(key => `<th class="signal-${key}" aria-label="${labels[key]}" title="${labels[key]}">${key === 'unknown' ? '?' : '●'}</th>`).join('');
-    target.innerHTML = `<table><thead><tr><th>Sinal</th>${headings}<th>Total</th></tr></thead><tbody><tr class="score-win-row"><th>Win</th>${keys.map(key => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr>${cycleRows}<tr><th>Loss após ${cfg.cycleRounds * cfg.recoveries}</th>${keys.map(key => cell(key, 'losses')).join('')}${overall('losses')}</tr></tbody></table>`;
+    const layoutTitle = mapColumnState.layout === 'grouped' ? 'Agrupar somente as bolinhas selecionadas' : 'Manter a sequência e apenas realçar as bolinhas selecionadas';
+    target.innerHTML = `<div class="map-score-controls"><button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div></div><table><thead><tr><th>Sinal</th>${columns.map(column => `<th>${marker(column)}</th>`).join('')}<th><button type="button" class="map-total-marker ${mapColumnState.selected === null ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row"><th>Win</th>${columns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr>${cycleRows}<tr><th>Loss após ${cfg.cycleRounds * cfg.recoveries}</th>${columns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr></tbody></table>`;
+    target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
+      const key = button.dataset.mapColumn || null;
+      mapColumnState.selected = mapColumnState.selected === key ? null : key;
+      draw();
+    }));
+    target.querySelectorAll('[data-map-dimension]').forEach(button => button.addEventListener('click', () => {
+      mapColumnState.dimension = button.dataset.mapDimension;
+      mapColumnState.selected = null;
+      localStorage.setItem('crash-map-column-dimension-v1', mapColumnState.dimension);
+      draw();
+    }));
+    target.querySelector('.map-selection-layout')?.addEventListener('click', () => {
+      mapColumnState.layout = mapColumnState.layout === 'grouped' ? 'highlight' : 'grouped';
+      localStorage.setItem('crash-map-column-layout-v1', mapColumnState.layout);
+      draw();
+    });
   }
   function drawCycleTable(summary, cfg) {
     const target = document.querySelector('#cycleTable');
@@ -163,7 +224,7 @@
       drawBalls(selected, trends);
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
-      drawScore(summary, cfg);
+      drawScore(selected, cfg, trends);
       drawCycleTable(summary, cfg);
       drawMetrics(summary);
       drawHeat(summary);
@@ -329,7 +390,29 @@
     .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     .ball .frequency-stamp i+i{margin-top:-1px}
     .ball .frequency-stamp.down{border-color:rgba(255,148,166,.55);background:rgba(53,24,35,.94)}
-    .ball .frequency-stamp.down i{background:#fb8299;clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}`;
+    .ball .frequency-stamp.down i{background:#fb8299;clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
+    #signalScore{position:relative;padding-top:31px}
+    #signalScore .map-score-controls{position:absolute;z-index:2;top:5px;right:0;display:flex;align-items:center;gap:5px}
+    #signalScore .map-score-tabs{display:flex;padding:2px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+    #signalScore .map-score-tabs button{border:0;border-radius:5px;background:transparent;color:var(--muted);padding:3px 6px;font:600 .62rem/1 inherit;cursor:pointer}
+    #signalScore .map-score-tabs button[aria-selected="true"]{background:rgba(57,220,160,.16);color:var(--text)}
+    #signalScore .map-selection-layout{width:25px;height:25px;display:flex;align-items:center;justify-content:center;gap:2px;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--panel);cursor:pointer}
+    #signalScore .map-selection-layout span{width:4px;height:4px;border-radius:50%;background:var(--muted);transition:transform .16s ease,opacity .16s ease}
+    #signalScore .map-selection-layout.highlight span:nth-child(2){transform:translateY(-3px);background:var(--green)}
+    #signalScore .map-selection-layout.grouped{gap:0}
+    #signalScore .map-selection-layout.grouped span{transform:none;background:var(--green)}
+    #signalScore .map-column-marker,#signalScore .map-total-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}
+    #signalScore .map-column-marker.signal-green{color:var(--green)}#signalScore .map-column-marker.signal-yellow{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red{color:var(--red)}
+    #signalScore .map-column-marker.signal-unknown{border-style:dashed}
+    #signalScore .map-column-marker.selected,#signalScore .map-total-marker.selected{box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor}
+    #signalScore .frequency-marker{color:var(--muted)}
+    #signalScore .frequency-marker .frequency-stamp{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;width:auto;height:auto;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
+    #signalScore .frequency-marker .frequency-stamp i{display:block;width:8px;height:5px;background:var(--green);clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
+    #signalScore .frequency-marker .frequency-stamp i+i{margin-top:-2px}
+    #signalScore .frequency-marker .frequency-stamp.down i{background:var(--red);clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
+    #signalScore .map-column-muted{opacity:.2;filter:saturate(.35)}
+    @media(max-width:720px){#signalScore{padding-top:29px}#signalScore .map-score-controls{top:4px}#signalScore .map-score-tabs button{padding:3px 5px;font-size:.6rem}}
+    `;
   document.head.append(style);
 
   function installFarol() {
