@@ -15,8 +15,8 @@
   let suppressLegacyMap = false;
   const mapColumnState = {
     dimension: localStorage.getItem('crash-map-column-dimension-v1') || 'frequency',
-    selected: null,
-    row: null,
+    selected: [],
+    rows: [],
     expanded: localStorage.getItem('crash-map-columns-v1') === 'expanded',
     layout: localStorage.getItem('crash-map-column-layout-v1') || 'highlight'
   };
@@ -129,11 +129,11 @@
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
-    const selectedBucket = mapColumnState.selected;
-    const selectedRow = mapColumnState.row;
-    const matching = event => (!selectedBucket || bucketFor(event, trends) === selectedBucket) &&
-      (!selectedRow || rowBucket(event) === selectedRow || (selectedRow === 'wins' && event.color !== 'red' && !event.pending));
-    const filtering = Boolean(selectedBucket || selectedRow);
+    const selectedBuckets = mapColumnState.selected;
+    const selectedRows = mapColumnState.rows;
+    const matching = event => (!selectedBuckets.length || selectedBuckets.includes(bucketFor(event, trends))) &&
+      (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow || (selectedRow === 'wins' && event.color !== 'red' && !event.pending)));
+    const filtering = Boolean(selectedBuckets.length || selectedRows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
     target.classList.remove('compact-2x');
@@ -144,8 +144,8 @@
       const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
-      if (filtering && mapColumnState.layout === 'highlight' && !matching(event)) return '<span class="map-filter-gap" aria-hidden="true"></span>';
-      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
+      const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
+      return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends) {
@@ -172,13 +172,15 @@
       const stamp = isFrequency && direction !== 'flat'
         ? `<span class="frequency-stamp ${direction}">${'<i></i>'.repeat(steps)}</span>` : '';
       const flat = isFrequency && key === 'flat' ? ' flat-marker' : '';
-      return `<span class="map-column-marker ${isFrequency ? 'frequency-marker' : `signal-${key}`}${flat} ${mapColumnState.selected === key ? 'selected' : ''}" aria-hidden="true">${stamp}</span>`;
+      return `<span class="map-column-marker ${isFrequency ? 'frequency-marker' : `signal-${key}`}${flat}" aria-hidden="true">${stamp}</span>`;
     };
+    const columnClass = key => !mapColumnState.selected.length ? '' : (mapColumnState.selected.includes(key) ? ' map-active' : ' map-dim');
+    const rowClass = key => !mapColumnState.rows.length ? '' : (mapColumnState.rows.includes(key) ? ' map-active' : ' map-dim');
     const cell = (key, field, showProfit = false) => {
       const bucket = summaries[key];
       const number = field === 'wins' ? bucket.wins : bucket.losses;
       const bucketTotal = bucket.wins + bucket.losses;
-      return `<td><strong class="${showProfit ? tone(bucket.profit) : ''}">${int(number)}</strong><small>${pct(number, bucketTotal)}</small>${showProfit ? `<small class="score-profit ${tone(bucket.profit)}">${bucket.estimated ? '≈' : ''}${units(bucket.profit)}</small>` : ''}</td>`;
+      return `<td data-map-column="${key}" class="${columnClass(key)}"><strong class="${showProfit ? tone(bucket.profit) : ''}">${int(number)}</strong><small>${pct(number, bucketTotal)}</small>${showProfit ? `<small class="score-profit ${tone(bucket.profit)}">${bucket.estimated ? '≈' : ''}${units(bucket.profit)}</small>` : ''}</td>`;
     };
     const overall = (field, showProfit = false) => {
       const number = summary[field];
@@ -186,10 +188,10 @@
     };
     const cycleCell = (item, level, cycle) => {
       const result = item.cells[level]?.[cycle] || { wins: 0, losses: 0 }, total = result.wins + result.losses;
-      return `<td><strong>${int(result.wins)}W · ${int(result.losses)}L</strong><small>${pct(result.wins, total)}</small></td>`;
+      return `<td data-map-column="${item._bucket || ''}" class="${item._bucket ? columnClass(item._bucket) : ''}"><strong>${int(result.wins)}W · ${int(result.losses)}L</strong><small>${pct(result.wins, total)}</small></td>`;
     };
     const cycleRows = summary.cells.map((_, level) => `<tr class="map-level-section"><th colspan="${shownColumns.length + 2}">N${level}</th></tr>${Array.from({ length: cfg.recoveries }, (_, cycle) =>
-      `<tr class="map-cycle-row"><th class="map-row-head" data-map-row="cycle-${cycle}" aria-pressed="${mapColumnState.row === `cycle-${cycle}`}" title="Filtrar N${level} · C${cycle}">C${cycle}</th>${shownColumns.map(([key]) => cycleCell(summaries[key], level, cycle)).join('')}${cycleCell(summary, level, cycle)}</tr>`
+      `<tr class="map-cycle-row${rowClass(`cycle-${cycle}`)}"><th class="map-row-head" data-map-row="cycle-${cycle}" aria-pressed="${mapColumnState.rows.includes(`cycle-${cycle}`)}" title="Filtrar N${level} · C${cycle}">C${cycle}</th>${shownColumns.map(([key]) => cycleCell({ ...summaries[key], _bucket: key }, level, cycle)).join('')}${cycleCell(summary, level, cycle)}</tr>`
     ).join('')}`).join('');
     const layoutTitle = mapColumnState.layout === 'grouped' ? 'Agrupar somente as bolinhas selecionadas' : 'Manter a sequência e apenas realçar as bolinhas selecionadas';
     const activePeriod = windowSize() === Infinity ? 'all' : String(windowSize());
@@ -197,28 +199,28 @@
     const detailTitle = mapColumnState.expanded ? 'Recolher colunas detalhadas' : 'Mostrar colunas detalhadas';
     const detailControls = `<button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div>`;
     const columnCount = shownColumns.length + 2;
-    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head" data-map-column="${key}" aria-pressed="${mapColumnState.selected === key}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${mapColumnState.selected === null && mapColumnState.row === null ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.row === 'wins'}" title="Filtrar wins">Win</th>${shownColumns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr><tr class="map-loss-row"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.row === 'losses'}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos</th></tr>${cycleRows}</tbody></table>`;
+    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar wins">Win</th>${shownColumns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos</th></tr>${cycleRows}</tbody></table>`;
     target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
       const key = button.dataset.mapColumn || null;
-      mapColumnState.selected = mapColumnState.selected === key ? null : key;
-      if (key === null) mapColumnState.row = null;
+      mapColumnState.selected = key === null ? [] : (mapColumnState.selected.includes(key) ? mapColumnState.selected.filter(item => item !== key) : [...mapColumnState.selected, key]);
+      if (key === null) mapColumnState.rows = [];
       draw();
     }));
     target.querySelectorAll('[data-map-row]').forEach(node => node.addEventListener('click', () => {
       const key = node.dataset.mapRow || null;
-      mapColumnState.row = mapColumnState.row === key ? null : key;
-      if (key === null) mapColumnState.selected = null;
+      mapColumnState.rows = key === null ? [] : (mapColumnState.rows.includes(key) ? mapColumnState.rows.filter(item => item !== key) : [...mapColumnState.rows, key]);
+      if (key === null) mapColumnState.selected = [];
       draw();
     }));
     target.querySelectorAll('[data-map-dimension]').forEach(button => button.addEventListener('click', () => {
       mapColumnState.dimension = button.dataset.mapDimension;
-      mapColumnState.selected = null;
+      mapColumnState.selected = [];
       localStorage.setItem('crash-map-column-dimension-v1', mapColumnState.dimension);
       draw();
     }));
     target.querySelector('.map-columns-toggle')?.addEventListener('click', () => {
       mapColumnState.expanded = !mapColumnState.expanded;
-      if (!mapColumnState.expanded) mapColumnState.selected = null;
+      if (!mapColumnState.expanded) mapColumnState.selected = [];
       localStorage.setItem('crash-map-columns-v1', mapColumnState.expanded ? 'expanded' : 'collapsed');
       draw();
     });
@@ -453,16 +455,15 @@
     #signalScore .map-selection-layout.grouped span{transform:none;background:var(--green)}
     #signalScore .map-column-head,#signalScore .map-row-head{padding:2px!important;cursor:pointer}#signalScore .map-column-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);pointer-events:none}
     #signalScore .map-column-marker.signal-green{color:var(--green)}#signalScore .map-column-marker.signal-yellow{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red{color:var(--red)}
-    #signalScore .map-column-marker.selected,#signalScore .map-total-filter.selected,#signalScore .map-row-head[aria-pressed="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor}
+    #signalScore .map-total-filter.selected{color:var(--green)}
     #signalScore .frequency-marker{color:var(--muted)}#signalScore .frequency-marker.flat-marker{color:var(--red)}
     #signalScore .frequency-marker .frequency-stamp{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;width:auto;height:auto;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
     #signalScore .frequency-marker .frequency-stamp i{display:block;width:8px;height:5px;background:var(--green);clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     #signalScore .frequency-marker .frequency-stamp i+i{margin-top:-2px}
     #signalScore .frequency-marker .frequency-stamp.down i{background:var(--red);clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
-    #signalScore .map-column-muted{opacity:.2;filter:saturate(.35)}
-    #signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}#signalScore .map-total-filter.selected{color:var(--green)}
+    #signalScore .map-dim{opacity:.22;filter:saturate(.3)}#signalScore .map-active{opacity:1;filter:none}#signalScore tr.map-dim>th,#signalScore tr.map-dim>td{opacity:.22;filter:saturate(.3)}#signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}
     #signalScore .map-cycle-section th{padding:5px 2px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--muted);font-size:.65rem;letter-spacing:.08em;text-align:left;text-transform:uppercase}#signalScore .map-level-section th{padding:5px 2px 2px;border-top:1px solid var(--line);color:var(--yellow);font-size:.66rem;letter-spacing:.06em;text-align:left}#signalScore .map-cycle-row strong{font-size:.69rem;white-space:nowrap}#signalScore .map-loss-row th{color:var(--red)}
-    #signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}
+    #signalScore .map-filter-muted{opacity:.2;filter:grayscale(.7) saturate(.35)}#signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}#signalScore td[data-map-column]{cursor:pointer}
     @media(max-width:720px){#signalScore .map-score-controls{top:0}#signalScore .map-score-tabs button{padding:5px 6px;font-size:.7rem}#signalScore .map-period-control{font-size:.7rem}#signalScore .map-period-select{min-width:55px;font-size:.74rem}}
     `;
   document.head.append(style);
