@@ -103,12 +103,12 @@
 
   // A tendência é observada no payout-âncora, antes da primeira aposta do ciclo.
   // A referência é a frequência histórica acumulada até antes dessa rodada.
-  function trendAtAnchors(source, payout, gapLimit = 20, windowSize = 500, minHistory = 5000) {
+  function trendAtAnchors(source, payout, gapLimit = 20, windowSize = 500, minHistory = 500) {
     const ordered = orderedRows(source);
     const target = Math.max(1.01, Number(payout) || 30);
     const limit = Math.max(0, Math.floor(Number(gapLimit) || 0));
     const window = Math.max(1, Math.floor(Number(windowSize) || 500));
-    const minimum = Math.max(window, Math.floor(Number(minHistory) || 5000));
+    const minimum = Math.max(window, Math.floor(Number(minHistory) || 500));
     const byRoundId = {};
     let previous = null, historicalCount = 0, historicalHits = 0;
     let hitPrefix = [0], missingPrefix = [0];

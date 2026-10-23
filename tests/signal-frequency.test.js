@@ -72,3 +72,11 @@ test('tendência da âncora não usa resultados posteriores e separa gaps longos
   const afterGap = trendAtAnchors([...base, { round_id: 5525, multiplier: 30 }], 30, 20, 500, 5000);
   assert.equal(afterGap.byRoundId[5525].ready, false);
 });
+
+test('setas ficam disponíveis após 500 rodadas, sem exigir 5.000', () => {
+  const base = rows(new Set([500, 501]), 501);
+  const state = trendAtAnchors(base, 30, 20, 500);
+  assert.equal(state.byRoundId[500].ready, false);
+  assert.equal(state.byRoundId[501].ready, true);
+  assert.equal(state.byRoundId[501].recentHits, 2);
+});

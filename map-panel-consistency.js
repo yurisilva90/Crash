@@ -23,8 +23,11 @@
     for (const source of sources) {
       for (const row of source || []) combined.set(Number(row.round_id), row);
     }
-    const source = [...combined.values()].filter(row => Number.isFinite(Number(row.round_id)));
-    const value = frequency.trendAtAnchors(source, payout, gap, 500, 5000).byRoundId;
+    const source = [...combined.values()].filter(row => {
+      const id = Number(row.round_id);
+      return id >= 9000000 && id <= 9999999;
+    });
+    const value = frequency.trendAtAnchors(source, payout, gap, 500, 500).byRoundId;
     trendCache = { key, snapshot, value };
     return value;
   }
