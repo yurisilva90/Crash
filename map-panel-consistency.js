@@ -500,6 +500,14 @@
     };
   }
   installFarol();
+  // A atualização geral do painel ainda redesenha a grade de bolinhas legada.
+  // Reaplicamos o mapa consistente em seguida para que a seleção da tabela não seja perdida.
+  const legacyRender = render;
+  render = function (...args) {
+    const result = legacyRender.apply(this, args);
+    if (!suppressLegacyMap) draw();
+    return result;
+  };
   // A seleção de 20 é dinâmica: vinte sequências, independentemente do R configurado.
   window.addEventListener('load', () => {
     installFarol();
