@@ -18,6 +18,10 @@
     selected: null,
     layout: localStorage.getItem('crash-map-column-layout-v1') || 'highlight'
   };
+  const mapPeriodOptions = [
+    ['20', '20'], ['50', '50'], ['100', '100'], ['500', '500'],
+    ['1000', '1.000'], ['5000', '5.000'], ['all', 'Total']
+  ];
 
   function trendBucket(event, records) {
     const level = Number(records?.[event.anchorRoundId]?.level) || 0;
@@ -152,7 +156,8 @@
       const isFrequency = mapColumnState.dimension === 'frequency';
       const stamp = isFrequency && direction !== 'flat'
         ? `<span class="frequency-stamp ${direction}">${'<i></i>'.repeat(steps)}</span>` : '';
-      return `<button type="button" class="map-column-marker ${isFrequency ? 'frequency-marker' : `signal-${key}`} ${mapColumnState.selected === key ? 'selected' : ''}" data-map-column="${key}" aria-pressed="${mapColumnState.selected === key}" aria-label="${label}" title="${label}">${stamp}</button>`;
+      const flat = isFrequency && key === 'flat' ? ' flat-marker' : '';
+      return `<span class="map-column-marker ${isFrequency ? 'frequency-marker' : `signal-${key}`}${flat} ${mapColumnState.selected === key ? 'selected' : ''}" aria-hidden="true">${stamp}</span>`;
     };
     const cell = (key, field, showProfit = false) => {
       const bucket = summaries[key];
@@ -171,7 +176,9 @@
       return `<tr><th>${begin}–${end}</th>${columns.map(([key]) => `<td>${int(summaries[key].buckets.green.cycleWins[cycle] + summaries[key].buckets.yellow.cycleWins[cycle] + summaries[key].buckets.blue.cycleWins[cycle] + summaries[key].buckets.red.cycleWins[cycle] + summaries[key].buckets.unknown.cycleWins[cycle])}</td>`).join('')}<td>${int(count)}</td></tr>`;
     }).join('');
     const layoutTitle = mapColumnState.layout === 'grouped' ? 'Agrupar somente as bolinhas selecionadas' : 'Manter a sequência e apenas realçar as bolinhas selecionadas';
-    target.innerHTML = `<div class="map-score-controls"><button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div></div><table><thead><tr><th>Sinal</th>${columns.map(column => `<th>${marker(column)}</th>`).join('')}<th><button type="button" class="map-total-marker ${mapColumnState.selected === null ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row"><th>Win</th>${columns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr>${cycleRows}<tr><th>Loss após ${cfg.cycleRounds * cfg.recoveries}</th>${columns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr></tbody></table>`;
+    const activePeriod = windowSize() === Infinity ? 'all' : String(windowSize());
+    const periodOptions = mapPeriodOptions.map(([value, label]) => `<option value="${value}" ${value === activePeriod ? 'selected' : ''}>${label}</option>`).join('');
+    target.innerHTML = `<div class="map-score-controls"><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select><div class="map-score-actions"><button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div></div></div><table><thead><tr><th>Sinal</th>${columns.map(([key, label, direction, steps]) => `<th class="map-column-head" data-map-column="${key}" aria-pressed="${mapColumnState.selected === key}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${mapColumnState.selected === null ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row"><th>Win</th>${columns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr>${cycleRows}<tr><th>Loss após ${cfg.cycleRounds * cfg.recoveries}</th>${columns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr></tbody></table>`;
     target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
       const key = button.dataset.mapColumn || null;
       mapColumnState.selected = mapColumnState.selected === key ? null : key;
@@ -186,6 +193,13 @@
     target.querySelector('.map-selection-layout')?.addEventListener('click', () => {
       mapColumnState.layout = mapColumnState.layout === 'grouped' ? 'highlight' : 'grouped';
       localStorage.setItem('crash-map-column-layout-v1', mapColumnState.layout);
+      draw();
+    });
+    target.querySelector('.map-period-select')?.addEventListener('change', event => {
+      const value = event.target.value;
+      window.mapPanelWindow = value === 'all' ? Infinity : Number(value);
+      count = window.mapPanelWindow;
+      if (count >= 500 && typeof refreshMapHistory === 'function') refreshMapHistory();
       draw();
     });
   }
@@ -372,9 +386,9 @@
     draw();
   };
   const style = document.createElement('style');
-  style.textContent = `#signalScore table{min-width:590px}#signalScore .signal-blue{color:var(--blue)}#signalScore .signal-unknown{color:var(--muted)}
+  style.textContent = `#mapView .map-tabs .toggle[aria-label="Recorte do mapa"]{display:none!important}#signalScore table{min-width:500px}#signalScore .signal-blue{color:var(--blue)}#signalScore .signal-unknown{color:var(--red)}
     .ball.signal-blue{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--blue)!important}
-    .ball.signal-unknown{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--muted)!important}
+    .ball.signal-unknown{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--red)!important}
     .speed-ring.frequency-blue{background:radial-gradient(circle at center,#0d1a2b 61%,transparent 62%),conic-gradient(var(--blue) var(--meter),#273b53 0)}
     .speed-ring.frequency-yellow{background:radial-gradient(circle at center,#0d1a2b 61%,transparent 62%),conic-gradient(var(--yellow) var(--meter),#273b53 0)}
     .speed-ring.frequency-red{background:radial-gradient(circle at center,#0d1a2b 61%,transparent 62%),conic-gradient(var(--red) var(--meter),#273b53 0)}
@@ -391,8 +405,10 @@
     .ball .frequency-stamp i+i{margin-top:-1px}
     .ball .frequency-stamp.down{border-color:rgba(255,148,166,.55);background:rgba(53,24,35,.94)}
     .ball .frequency-stamp.down i{background:#fb8299;clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
-    #signalScore{position:relative;padding-top:31px}
-    #signalScore .map-score-controls{position:absolute;z-index:2;top:5px;right:0;display:flex;align-items:center;gap:5px}
+    #signalScore{position:relative;padding-top:3px}
+    #signalScore .map-score-controls{position:sticky;z-index:4;top:0;left:0;display:flex;align-items:center;justify-content:flex-end;gap:5px;width:100%;min-width:0;padding:2px 0 4px;background:var(--panel)}
+    #signalScore .map-score-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+    #signalScore .map-period-select{min-width:52px;height:25px;padding:0 19px 0 7px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);font:600 .66rem/1 inherit;cursor:pointer}
     #signalScore .map-score-tabs{display:flex;padding:2px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
     #signalScore .map-score-tabs button{border:0;border-radius:5px;background:transparent;color:var(--muted);padding:3px 6px;font:600 .62rem/1 inherit;cursor:pointer}
     #signalScore .map-score-tabs button[aria-selected="true"]{background:rgba(57,220,160,.16);color:var(--text)}
@@ -401,17 +417,19 @@
     #signalScore .map-selection-layout.highlight span:nth-child(2){transform:translateY(-3px);background:var(--green)}
     #signalScore .map-selection-layout.grouped{gap:0}
     #signalScore .map-selection-layout.grouped span{transform:none;background:var(--green)}
-    #signalScore .map-column-marker,#signalScore .map-total-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer}
+    #signalScore .map-column-head{padding:2px!important;cursor:pointer}#signalScore .map-column-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);pointer-events:none}
     #signalScore .map-column-marker.signal-green{color:var(--green)}#signalScore .map-column-marker.signal-yellow{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red{color:var(--red)}
-    #signalScore .map-column-marker.signal-unknown{border-style:dashed}
-    #signalScore .map-column-marker.selected,#signalScore .map-total-marker.selected{box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor}
-    #signalScore .frequency-marker{color:var(--muted)}
+    #signalScore .map-column-marker.signal-unknown{color:var(--red);border-style:solid}
+    #signalScore .map-column-marker.selected,#signalScore .map-total-filter.selected{box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor}
+    #signalScore .frequency-marker{color:var(--muted)}#signalScore .frequency-marker.flat-marker{color:var(--red)}
     #signalScore .frequency-marker .frequency-stamp{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;width:auto;height:auto;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
     #signalScore .frequency-marker .frequency-stamp i{display:block;width:8px;height:5px;background:var(--green);clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     #signalScore .frequency-marker .frequency-stamp i+i{margin-top:-2px}
     #signalScore .frequency-marker .frequency-stamp.down i{background:var(--red);clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
     #signalScore .map-column-muted{opacity:.2;filter:saturate(.35)}
-    @media(max-width:720px){#signalScore{padding-top:29px}#signalScore .map-score-controls{top:4px}#signalScore .map-score-tabs button{padding:3px 5px;font-size:.6rem}}
+    #signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}#signalScore .map-total-filter.selected{color:var(--green)}
+    #signalScore table th,#signalScore table td{padding:3px 3px}
+    @media(max-width:720px){#signalScore .map-score-controls{top:0}#signalScore .map-score-tabs button{padding:3px 5px;font-size:.6rem}#signalScore .map-period-select{min-width:49px;font-size:.62rem}}
     `;
   document.head.append(style);
 
