@@ -119,6 +119,11 @@
         if (missing > limit) {
           hitPrefix = [0];
           missingPrefix = [0];
+          // A média de referência também pertence ao segmento contínuo.
+          // Manter a média anterior aqui comparava uma nova sequência limpa
+          // com rodadas de antes de uma lacuna longa.
+          historicalCount = 0;
+          historicalHits = 0;
         } else {
           for (let step = 0; step < missing; step++) {
             hitPrefix.push(hitPrefix.at(-1));

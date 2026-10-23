@@ -73,6 +73,17 @@ test('tendência da âncora não usa resultados posteriores e separa gaps longos
   assert.equal(afterGap.byRoundId[5525].ready, false);
 });
 
+test('a média da tendência também reinicia após um gap longo', () => {
+  const beforeGap = rows(new Set(Array.from({ length: 1000 }, (_, index) => index + 1)), 1000);
+  const afterGap = Array.from({ length: 501 }, (_, index) => ({
+    round_id: 2000 + index,
+    multiplier: index % 30 === 0 || index === 500 ? 30 : 1
+  }));
+  const state = trendAtAnchors([...beforeGap, ...afterGap], 30, 20, 500, 500);
+  assert.equal(state.byRoundId[2500].ready, true);
+  assert.equal(state.byRoundId[2500].level, 0);
+});
+
 test('setas ficam disponíveis após 500 rodadas, sem exigir 5.000', () => {
   const base = rows(new Set([500, 501]), 501);
   const state = trendAtAnchors(base, 30, 20, 500);
