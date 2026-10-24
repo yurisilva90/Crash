@@ -196,12 +196,18 @@
       const number = summary[field];
       return `<td><strong class="${showProfit ? tone(summary.profit) : ''}">${int(number)}</strong><small>${pct(number, total)}</small>${showProfit ? `<small class="score-profit ${tone(summary.profit)}">${summary.estimated ? '≈' : ''}${units(summary.profit)}</small>` : ''}</td>`;
     };
-    const cycleCell = (item, level, cycle) => {
+    // A seleção das colunas serve para o placar Win/Loss e para o Total.
+    // A grade de ciclos, porém, é referência de profundidade: ela nunca deve
+    // desaparecer, nem escurecer, quando o usuário está comparando colunas.
+    const cycleSummary = finance.summarise(selected.filter(event =>
+      !mapColumnState.selected.length || mapColumnState.selected.includes(bucketFor(event, trends))
+    ), cfg);
+    const cycleCell = (item, level, cycle, extraClass = '') => {
       const result = item.cells[level]?.[cycle] || { wins: 0, losses: 0 }, total = result.wins + result.losses;
-      return `<td data-map-column="${item._bucket || ''}" class="${item._bucket ? columnClass(item._bucket) : ''}"><strong>${int(result.wins)}W · ${int(result.losses)}L</strong><small>${pct(result.wins, total)}</small></td>`;
+      return `<span class="map-cycle-value ${extraClass}"><strong>${int(result.wins)}W · ${int(result.losses)}L</strong><small>${pct(result.wins, total)}</small></span>`;
     };
-    const cycleRows = summary.cells.map((_, level) => `<tr class="map-level-section"><th colspan="${shownColumns.length + 2}">N${level}</th></tr>${Array.from({ length: cfg.recoveries }, (_, cycle) =>
-      `<tr class="map-cycle-row${rowClass(`cycle-${cycle}`)}"><th class="map-row-head" data-map-row="cycle-${cycle}" aria-pressed="${mapColumnState.rows.includes(`cycle-${cycle}`)}" title="Filtrar N${level} · C${cycle}">C${cycle}</th>${shownColumns.map(([key]) => cycleCell({ ...summaries[key], _bucket: key }, level, cycle)).join('')}${cycleCell(summary, level, cycle)}</tr>`
+    const cycleRows = cycleSummary.cells.map((_, level) => `<tr class="map-level-section"><th colspan="${shownColumns.length + 2}">N${level}</th></tr>${Array.from({ length: cfg.recoveries }, (_, cycle) =>
+      `<tr class="map-cycle-row"><th>C${cycle}</th><td colspan="${shownColumns.length + 1}"><div class="map-cycle-values" style="--cycle-columns:${columns.length + 1}">${columns.map(([key]) => cycleCell(summaries[key], level, cycle)).join('')}${cycleCell(cycleSummary, level, cycle, 'map-cycle-total')}</div></td></tr>`
     ).join('')}`).join('');
     const layoutTitle = mapColumnState.layout === 'grouped' ? 'Agrupar somente as bolinhas selecionadas' : 'Manter a sequência e apenas realçar as bolinhas selecionadas';
     const activePeriod = windowSize() === Infinity ? 'all' : String(windowSize());
@@ -476,7 +482,7 @@
     #signalScore .frequency-marker .frequency-stamp i+i{margin-top:-2px}
     #signalScore .frequency-marker .frequency-stamp.down i{background:var(--red);clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
     #signalScore .map-dim{opacity:.22;filter:saturate(.3)}#signalScore .map-active{opacity:1;filter:none}#signalScore tr.map-dim>th,#signalScore tr.map-dim>td{opacity:.22;filter:saturate(.3)}#signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}
-    #signalScore .map-cycle-section th{padding:5px 2px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--muted);font-size:.65rem;letter-spacing:.08em;text-align:left;text-transform:uppercase}#signalScore .map-level-section th{padding:5px 2px 2px;border-top:1px solid var(--line);color:var(--yellow);font-size:.66rem;letter-spacing:.06em;text-align:left}#signalScore .map-cycle-row strong{font-size:.69rem;white-space:nowrap}#signalScore .map-loss-row th{color:var(--red)}
+    #signalScore .map-cycle-section th{padding:5px 2px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--muted);font-size:.65rem;letter-spacing:.08em;text-align:left;text-transform:uppercase}#signalScore .map-level-section th{padding:5px 2px 2px;border-top:1px solid var(--line);color:var(--yellow);font-size:.66rem;letter-spacing:.06em;text-align:left}#signalScore .map-cycle-row>th{color:var(--text);cursor:default}#signalScore .map-cycle-row>td{padding:2px 0!important}#signalScore .map-cycle-values{display:grid;grid-template-columns:repeat(var(--cycle-columns),minmax(0,1fr));gap:2px;min-width:0}#signalScore .map-cycle-value{display:grid;min-width:0;padding:1px 0;text-align:center;color:var(--text)}#signalScore .map-cycle-value strong{font-size:.69rem;white-space:nowrap}#signalScore .map-cycle-value small{font-size:.6rem;color:var(--muted)}#signalScore .map-cycle-value.map-cycle-total{border-left:1px solid var(--line);font-weight:700}#signalScore .map-loss-row th{color:var(--red)}
     #balls .ball.map-filter-muted{opacity:.1;filter:grayscale(1) brightness(.48)}#signalScore .map-filter-muted{opacity:.22;filter:grayscale(.7) saturate(.35)}#signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}#signalScore td[data-map-column]{cursor:pointer}
     @media(max-width:720px){#signalScore .map-score-controls{top:0}#signalScore .map-score-tabs button{padding:5px 6px;font-size:.7rem}#signalScore .map-period-control{font-size:.7rem}#signalScore .map-period-select{min-width:55px;font-size:.74rem}}
     `;
