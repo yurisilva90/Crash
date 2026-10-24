@@ -38,9 +38,12 @@ if (-not $liveSyncActive -and (Test-Path -LiteralPath $liveSyncScript)) {
   $liveSyncActive = $true
 }
 
-# O escritor usa mutex; iniciar a cada passagem é seguro e garante que volte
-# após reinício sem duplicar o processo nem as linhas do histórico de saldo.
-if (Test-Path -LiteralPath $balanceHistoryScript) {
+# Mantemos um único escritor de saldo. O mutex evita duplicidade de dados, mas
+# iniciar outro PowerShell a cada minuto ainda cria processos e pode piscar a
+# tela da VPS.
+$balanceHistoryProcesses = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -like '*balance-history-writer.ps1*' })
+if (-not $balanceHistoryProcesses.Count -and (Test-Path -LiteralPath $balanceHistoryScript)) {
   Start-Process -FilePath 'powershell.exe' -ArgumentList @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $balanceHistoryScript
   ) -WindowStyle Hidden
