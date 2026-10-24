@@ -118,6 +118,19 @@ test('win parcial recebe jade e não é contado como win financeiro concluído',
   assert.equal(result.losses, 0);
 });
 
+test('win parcial reduz o prejuízo final e o DD guarda o pior ponto antes do abatimento', () => {
+  const configuration = { ...cfg(30, 1, 1, 1), levelRecoveries: 2, recoveryDivider: 2 };
+  // N0 perde; N1 recupera metade; a tentativa seguinte de N1 perde e encerra.
+  const result = summarise(project(rows(6, [1, 3, 4]), configuration, 0).events, configuration);
+  const partialStake = 1 / (2 * 29);
+  near(result.profit, -0.5 - partialStake);
+  // O pior ponto acontece antes do crédito do win parcial entrar.
+  near(result.maxDD, 1 + partialStake);
+  assert.equal(result.losses, 1);
+  assert.equal(result.cells[1][0].wins, 1);
+  assert.equal(result.cells[1][0].losses, 1);
+});
+
 test('um gap pequeno é estimado; acima do limite separa e não inventa operação', () => {
   const input = [{ round_id: 1, multiplier: 30 }, { round_id: 3, multiplier: 30 }];
   const configuration = cfg(30, 3);
