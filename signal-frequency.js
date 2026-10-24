@@ -68,7 +68,7 @@
     return { byRoundId, last, availableRounds: ordered.length };
   }
 
-  function latestWindows(source, payout, gapLimit = 20, sizes = [100, 250, 1000, 2000, 5000]) {
+  function latestWindows(source, payout, gapLimit = 20, sizes = [100, 250, 500, 1000, 2000, 5000]) {
     const ordered = orderedRows(source);
     const target = Math.max(1.01, Number(payout) || 30);
     const limit = Math.max(0, Math.floor(Number(gapLimit) || 0));
@@ -87,8 +87,22 @@
         lastId - Number(segment[0].round_id) + 1) : 0;
       const hits = sample.filter(row => Number(row.multiplier) >= target).length;
       const minimum = Math.ceil(windowSize * .99 / target);
+      let maxWithoutPayout = 0, currentRun = 0, previousId = null, runEstimated = false;
+      for (const row of sample) {
+        const id = Number(row.round_id);
+        // Não inferimos o resultado das rodadas faltantes. A maior sequência
+        // continua sendo útil, mas recebe ≈ se houver lacuna no período.
+        if (previousId !== null && id - previousId > 1) {
+          currentRun = 0;
+          runEstimated = true;
+        }
+        if (Number(row.multiplier) >= target) currentRun = 0;
+        else currentRun++;
+        maxWithoutPayout = Math.max(maxWithoutPayout, currentRun);
+        previousId = id;
+      }
       return { windowSize, hits, minimum, available, ready: available === windowSize,
-        estimated: available > sample.length };
+        estimated: available > sample.length, maxWithoutPayout, runEstimated };
     });
   }
 

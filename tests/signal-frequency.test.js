@@ -52,6 +52,17 @@ test('cartão de frequência usa os mesmos IDs e gaps do farol', () => {
   assert.equal(split.hits, 1);
 });
 
+test('cartão informa a maior sequência observada sem o payout', () => {
+  const source = [
+    { round_id: 1, multiplier: 1 }, { round_id: 2, multiplier: 1 },
+    { round_id: 3, multiplier: 30 }, { round_id: 4, multiplier: 1 },
+    { round_id: 5, multiplier: 1 }, { round_id: 6, multiplier: 1 }
+  ];
+  const card = latestWindows(source, 30, 20, [6])[0];
+  assert.equal(card.maxWithoutPayout, 3);
+  assert.equal(card.runEstimated, false);
+});
+
 test('setas de tendência usam somente uma ou duas marcas, inclusive além de 30%', () => {
   assert.equal(classifyTrend(1.09), 0);
   assert.equal(classifyTrend(1.1), 1);
