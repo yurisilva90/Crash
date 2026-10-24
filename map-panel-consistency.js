@@ -470,7 +470,7 @@
     #signalScore .map-column-head,#signalScore .map-row-head{padding:2px!important;cursor:pointer}#signalScore .map-column-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);pointer-events:none}
     #signalScore .map-column-marker.signal-green{color:var(--green)}#signalScore .map-column-marker.signal-yellow{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red{color:var(--red)}
     #signalScore .map-total-filter.selected{color:var(--green)}
-    #signalScore .frequency-marker{color:var(--muted)}#signalScore .frequency-marker.flat-marker{color:var(--red)}
+    #signalScore .frequency-marker{color:var(--muted)}#signalScore .frequency-marker.flat-marker{color:transparent;border-color:transparent}
     #signalScore .frequency-marker .frequency-stamp{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;width:auto;height:auto;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
     #signalScore .frequency-marker .frequency-stamp i{display:block;width:8px;height:5px;background:var(--green);clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     #signalScore .frequency-marker .frequency-stamp i+i{margin-top:-2px}
