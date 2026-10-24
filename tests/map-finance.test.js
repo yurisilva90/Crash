@@ -106,6 +106,18 @@ test('win parcial permanece no mesmo nível quando há mais recuperações confi
   assert.equal(result.cells[1][0].wins, 2);
 });
 
+test('win parcial recebe jade e não é contado como win financeiro concluído', () => {
+  const configuration = { ...cfg(30, 1, 1, 1), levelRecoveries: 2, recoveryDivider: 2 };
+  const report = project(rows(5, [1, 3, 4, 5]), configuration, 0);
+  const partial = report.events.find(event => event.roundId === 4);
+  assert.equal(partial.color, 'jade');
+  assert.equal(partial.partialWin, true);
+  near(partial.remainingDebt, 0.5);
+  const result = summarise(report.events, configuration);
+  assert.equal(result.wins, 1);
+  assert.equal(result.losses, 0);
+});
+
 test('um gap pequeno é estimado; acima do limite separa e não inventa operação', () => {
   const input = [{ round_id: 1, multiplier: 30 }, { round_id: 3, multiplier: 30 }];
   const configuration = cfg(30, 3);

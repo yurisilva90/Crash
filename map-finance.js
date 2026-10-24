@@ -86,7 +86,10 @@
         profit: current.profit, deltas: current.deltas,
         cycles: current.cycles, estimated: current.estimated };
     }
-    function colorForCompleted(completed) {
+    function colorForCompleted(completed, partialWin = false) {
+      // Jade é um acerto que reduziu a dívida, mas não concluiu o resultado.
+      // Não é contado como win final no resumo financeiro.
+      if (partialWin) return 'jade';
       const outcome = completed.at(-1);
       if (!outcome) return 'pending';
       if (!outcome.win) return 'red';
@@ -96,7 +99,7 @@
       return cycle === 0 ? 'green' : cycle === 1 ? 'yellow' : 'orange';
     }
     function bet(targetHit, roundId, finished) {
-      if (!campaign || campaign.waitingLevel) return;
+      if (!campaign || campaign.waitingLevel) return { partialWin: false };
       const stake = campaign.base * factor ** campaign.position;
       campaign.deltas.push(-stake);
       campaign.profit -= stake;
@@ -113,13 +116,13 @@
             campaign.cycle = 0;
             campaign.position = 0;
             campaign.base = nextBase(campaign, 'recover');
-            return;
+            return { partialWin: true, remainingDebt: Math.max(0, -campaign.profit) };
           }
           // Acabou o número de recuperações daquele nível sem quitar tudo:
           // realiza o saldo restante. N não sobe em win parcial.
           finished.push(close(campaign, false, campaign.position, roundId));
           campaign = null;
-          return;
+          return { partialWin: false };
         }
         finished.push(close(campaign, true, campaign.position, roundId));
         campaign = newCampaign(signalByRoundId[roundId]);
@@ -142,23 +145,26 @@
           campaign = null;
         }
       }
+      return { partialWin: false };
     }
     function settleTarget(row, distance, completed, missing) {
       const roundId = Number(row.round_id);
       if (campaign && missing) campaign.estimated = true;
+      let partial = { partialWin: false };
       if (campaign?.waitingLevel) {
         campaign.waitingLevel = false;
         campaign.base = nextBase(campaign, cfg.levelMode);
       } else if (campaign) {
-        bet(true, roundId, completed);
+        partial = bet(true, roundId, completed);
       } else {
         campaign = newCampaign(signalByRoundId[roundId]);
       }
       events.push({ roundId, anchorRoundId: Number(anchor.round_id), capturedAt: row.captured_at, row, label: distance,
         payoutLabel: Number(row.multiplier).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
-        color: colorForCompleted(completed),
+        color: colorForCompleted(completed, partial.partialWin),
         signal: completed.at(-1)?.signal || campaign?.signal || 'unknown',
-        completed, missing, pending: false });
+        completed, missing, pending: false, partialWin: partial.partialWin,
+        remainingDebt: partial.remainingDebt || 0 });
     }
     function finishSegment() {
       if (!anchor || !lastRow || Number(lastRow.round_id) === Number(anchor.round_id)) return;

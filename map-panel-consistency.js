@@ -38,6 +38,7 @@
 
   function rowBucket(event) {
     if (event.color === 'red') return 'losses';
+    if (event.partialWin) return 'partial';
     const cycle = event.completed?.at(-1)?.cycles?.at(-1)?.cycle;
     if (Number.isInteger(cycle)) return `cycle-${cycle}`;
     if (event.color === 'green') return 'cycle-0';
@@ -132,7 +133,7 @@
     const selectedBuckets = mapColumnState.selected;
     const selectedRows = mapColumnState.rows;
     const matching = event => (!selectedBuckets.length || selectedBuckets.includes(bucketFor(event, trends))) &&
-      (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow || (selectedRow === 'wins' && event.color !== 'red' && !event.pending)));
+      (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow || (selectedRow === 'wins' && event.color !== 'red' && !event.partialWin && !event.pending)));
     const filtering = Boolean(selectedBuckets.length || selectedRows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
@@ -145,7 +146,8 @@
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
-      return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
+      const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
+      return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends) {
@@ -302,7 +304,8 @@
       const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
       const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
-      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}">${content}${trendStamp(event, trends)}</span>`;
+      const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
+      return `<span class="ball ${event.color}${classes}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}</span>`;
     }).join('');
   }
 
@@ -420,7 +423,8 @@
     draw();
   };
   const style = document.createElement('style');
-  style.textContent = `#mapView .map-tabs .toggle[aria-label="Recorte do mapa"],#cycleTable{display:none!important}#signalScore{scrollbar-width:none;-ms-overflow-style:none}#signalScore::-webkit-scrollbar{display:none}#signalScore table{min-width:540px}#signalScore .signal-blue{color:var(--blue)}
+  style.textContent = `:root{--jade:#239b7a}#mapView .map-tabs .toggle[aria-label="Recorte do mapa"],#cycleTable{display:none!important}#signalScore{scrollbar-width:none;-ms-overflow-style:none}#signalScore::-webkit-scrollbar{display:none}#signalScore table{min-width:540px}#signalScore .signal-blue{color:var(--blue)}
+    .ball.jade{background:var(--jade);color:#edfff8}.recent-balls .ball.jade{border-color:#74d5b9}
     .ball.signal-blue{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--blue)!important}
     .speed-ring.frequency-blue{background:radial-gradient(circle at center,#0d1a2b 61%,transparent 62%),conic-gradient(var(--blue) var(--meter),#273b53 0)}
     .speed-ring.frequency-yellow{background:radial-gradient(circle at center,#0d1a2b 61%,transparent 62%),conic-gradient(var(--yellow) var(--meter),#273b53 0)}
