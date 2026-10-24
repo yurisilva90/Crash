@@ -16,6 +16,9 @@
       rounds: Math.max(1, Math.floor(Number(input.cycleRounds) || 21)),
       maxCycle: Math.max(0, Math.floor(Number(input.recoveries || 1) - 1)),
       maxLevel: Math.max(0, Math.floor(Number(input.levels) || 0)),
+      // Quantos blocos vencedores de recuperação podem ocorrer no mesmo N.
+      // N só avança após um loss completo daquele nível.
+      levelRecoveries: Math.max(1, Math.floor(Number(input.levelRecoveries) || 1)),
       recoveryDivider: Math.max(1, Number(input.recoveryDivider) || 1),
       cycleMode: input.cycleMode === 'profit' ? 'profit' : 'recover',
       levelMode: input.levelMode === 'profit' ? 'profit' : 'recover'
@@ -65,11 +68,18 @@
     function newCampaign(signal) {
       return { level: 0, cycle: 0, position: 0, base: 1, profit: 0,
         deltas: [], cycles: [], signal: normaliseSignal(signal),
-        estimated: Boolean(signal?.estimated), waitingLevel: false };
+        estimated: Boolean(signal?.estimated), waitingLevel: false,
+        levelRecoveryWins: 0 };
     }
     function nextBase(current, mode) {
       const target = mode === 'profit' ? cfg.payout - 1 : 0;
-      return Math.max(0, -current.profit / cfg.recoveryDivider + target) / (cfg.payout - 1);
+      // Depois de um win parcial no mesmo nível, o próximo bloco cobre o
+      // restante dividido apenas pelas partes ainda pendentes. Ex.: ÷2:
+      // primeiro win cobre metade; o segundo cobre todo o saldo restante.
+      const pieces = current.level > 0
+        ? Math.max(1, cfg.recoveryDivider - current.levelRecoveryWins)
+        : cfg.recoveryDivider;
+      return Math.max(0, -current.profit / pieces + target) / (cfg.payout - 1);
     }
     function close(current, win, position, endId) {
       return { win, position, endId, signal: current.signal,
@@ -96,6 +106,21 @@
         campaign.deltas.push(credit);
         campaign.profit += credit;
         campaign.cycles.push({ level: campaign.level, cycle: campaign.cycle, win: true, position: campaign.position });
+        if (campaign.level > 0 && campaign.profit < -1e-8) {
+          campaign.levelRecoveryWins++;
+          if (campaign.levelRecoveryWins < cfg.levelRecoveries) {
+            // Win parcial: continua no mesmo N, reinicia C0 e mantém a dívida.
+            campaign.cycle = 0;
+            campaign.position = 0;
+            campaign.base = nextBase(campaign, 'recover');
+            return;
+          }
+          // Acabou o número de recuperações daquele nível sem quitar tudo:
+          // realiza o saldo restante. N não sobe em win parcial.
+          finished.push(close(campaign, false, campaign.position, roundId));
+          campaign = null;
+          return;
+        }
         finished.push(close(campaign, true, campaign.position, roundId));
         campaign = newCampaign(signalByRoundId[roundId]);
       } else if (campaign.position === cfg.rounds) {
@@ -106,9 +131,11 @@
           campaign.base = nextBase(campaign,
             campaign.level > 0 && cfg.levelMode === 'profit' ? 'profit' : cfg.cycleMode);
         } else if (campaign.level < cfg.maxLevel) {
+          // Só um loss completo esgota o nível e avança N.
           campaign.level++;
           campaign.cycle = 0;
           campaign.position = 0;
+          campaign.levelRecoveryWins = 0;
           campaign.waitingLevel = true;
         } else {
           finished.push(close(campaign, false, 0, roundId));

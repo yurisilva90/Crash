@@ -95,6 +95,17 @@ test('N1 só começa depois do próximo alvo e respeita R/L do nível', () => {
   }
 });
 
+test('win parcial permanece no mesmo nível quando há mais recuperações configuradas', () => {
+  const configuration = { ...cfg(30, 1, 1, 1), levelRecoveries: 2, recoveryDivider: 2 };
+  // 1 ancora N0; 2 perde N0; 3 inicia N1; 4 recupera metade; 5 quita o restante em N1.
+  const result = summarise(project(rows(5, [1, 3, 4, 5]), configuration, 0).events, configuration);
+  near(result.profit, 0);
+  assert.equal(result.wins, 1);
+  assert.equal(result.losses, 0);
+  assert.equal(result.cells[0][0].losses, 1);
+  assert.equal(result.cells[1][0].wins, 2);
+});
+
 test('um gap pequeno é estimado; acima do limite separa e não inventa operação', () => {
   const input = [{ round_id: 1, multiplier: 30 }, { round_id: 3, multiplier: 30 }];
   const configuration = cfg(30, 3);
