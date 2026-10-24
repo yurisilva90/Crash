@@ -53,6 +53,15 @@
       : payoutBucket(event);
   }
 
+  function selectedEvents(events, trends) {
+    const selectedBuckets = mapColumnState.selected;
+    const selectedRows = mapColumnState.rows;
+    return events.filter(event =>
+      (!selectedBuckets.length || selectedBuckets.includes(bucketFor(event, trends))) &&
+      (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow ||
+        (selectedRow === 'wins' && event.color !== 'red' && !event.partialWin && !event.pending))));
+  }
+
   function trendRecords(payout, gap) {
     const sources = [historicalRows, mapRows, rows];
     const key = [...sources.map(source => `${source?.length || 0}:${source?.[0]?.round_id || ''}:${source?.at(-1)?.round_id || ''}`), payout, gap].join('|');
@@ -130,11 +139,8 @@
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
-    const selectedBuckets = mapColumnState.selected;
-    const selectedRows = mapColumnState.rows;
-    const matching = event => (!selectedBuckets.length || selectedBuckets.includes(bucketFor(event, trends))) &&
-      (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow || (selectedRow === 'wins' && event.color !== 'red' && !event.partialWin && !event.pending)));
-    const filtering = Boolean(selectedBuckets.length || selectedRows.length);
+    const matching = event => selectedEvents([event], trends).length === 1;
+    const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
     target.classList.remove('compact-2x');
@@ -150,7 +156,7 @@
       return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
-  function drawScore(selected, cfg, trends) {
+  function drawScore(selected, cfg, trends, filteredSummary) {
     const target = document.querySelector('#signalScore');
     if (!target) return;
     const frequencyColumns = [
@@ -167,7 +173,9 @@
     const groups = Object.fromEntries(columns.map(([key]) => [key, []]));
     for (const event of selected) groups[bucketFor(event, trends)]?.push(event);
     const summaries = Object.fromEntries(columns.map(([key]) => [key, finance.summarise(groups[key], cfg)]));
-    const summary = finance.summarise(selected, cfg);
+    // O Total mostra somente as colunas/linhas acesas. As outras colunas
+    // continuam na tabela para comparação, mas não entram no recorte final.
+    const summary = filteredSummary || finance.summarise(selectedEvents(selected, trends), cfg);
     const total = summary.wins + summary.losses;
     const marker = ([key, label, direction, steps]) => {
       const isFrequency = mapColumnState.dimension === 'frequency';
@@ -268,20 +276,22 @@
   function draw() {
     if (!snapshot) return;
     try {
-      const { selected, summary, cfg, gap, all } = projection();
+      const { selected, cfg, gap, all } = projection();
       const panel = panelProjection();
       const trends = activeStrategy === '2x' ? {} : trendRecords(cfg.payout, gap);
+      const filtered = selectedEvents(selected, trends);
+      const summary = finance.summarise(filtered, cfg);
       drawBalls(selected, trends);
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
-      drawScore(selected, cfg, trends);
+      drawScore(selected, cfg, trends, summary);
       drawCycleTable(summary, cfg);
       drawMetrics(summary);
       drawHeat(summary);
       const active = windowSize() === Infinity ? 'all' : String(windowSize());
       document.querySelectorAll('#mapView [data-count]').forEach(button => button.classList.toggle('active', button.dataset.count === active));
       const note = document.querySelector('#mapPageNote');
-      if (note) note.textContent = `${selected.length} sequências · ${summary.wins} wins · ${summary.losses} losses · ${summary.estimated} resultado(s) estimado(s) por gaps de até ${gap} rodadas · ${all.availableRounds} rodadas disponíveis`;
+      if (note) note.textContent = `${filtered.length} sequências · ${summary.wins} wins · ${summary.losses} losses · ${summary.estimated} resultado(s) estimado(s) por gaps de até ${gap} rodadas · ${all.availableRounds} rodadas disponíveis`;
       try { drawHistory(cfg, gap); }
       catch (error) { console.error('Falha nos indicadores históricos do painel', error); }
     } catch (error) {
@@ -467,7 +477,7 @@
     #signalScore .frequency-marker .frequency-stamp.down i{background:var(--red);clip-path:polygon(0 0,50% 66%,100% 0,100% 34%,50% 100%,0 34%)}
     #signalScore .map-dim{opacity:.22;filter:saturate(.3)}#signalScore .map-active{opacity:1;filter:none}#signalScore tr.map-dim>th,#signalScore tr.map-dim>td{opacity:.22;filter:saturate(.3)}#signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}
     #signalScore .map-cycle-section th{padding:5px 2px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--muted);font-size:.65rem;letter-spacing:.08em;text-align:left;text-transform:uppercase}#signalScore .map-level-section th{padding:5px 2px 2px;border-top:1px solid var(--line);color:var(--yellow);font-size:.66rem;letter-spacing:.06em;text-align:left}#signalScore .map-cycle-row strong{font-size:.69rem;white-space:nowrap}#signalScore .map-loss-row th{color:var(--red)}
-    #signalScore .map-filter-muted{opacity:.2;filter:grayscale(.7) saturate(.35)}#signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}#signalScore td[data-map-column]{cursor:pointer}
+    #balls .ball.map-filter-muted{opacity:.1;filter:grayscale(1) brightness(.48)}#signalScore .map-filter-muted{opacity:.22;filter:grayscale(.7) saturate(.35)}#signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}#signalScore td[data-map-column]{cursor:pointer}
     @media(max-width:720px){#signalScore .map-score-controls{top:0}#signalScore .map-score-tabs button{padding:5px 6px;font-size:.7rem}#signalScore .map-period-control{font-size:.7rem}#signalScore .map-period-select{min-width:55px;font-size:.74rem}}
     `;
   document.head.append(style);
