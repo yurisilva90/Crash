@@ -95,6 +95,30 @@ test('N1 só começa depois do próximo alvo e respeita R/L do nível', () => {
   }
 });
 
+test('C1 permanece direto dentro da mesma campanha, mesmo com filtro de nível fechado', () => {
+  const configuration = cfg(30, 3, 2);
+  // C0 perde nas 2–4 e C1 ganha na 5; o filtro só pode reter N1+.
+  const result = summarise(project(rows(5, [1, 5]), configuration, 0, {}, {
+    4: false, 5: false
+  }).events, configuration);
+  near(result.profit, 0);
+  assert.equal(result.wins, 1);
+  assert.equal(result.cells[0][0].losses, 1);
+  assert.equal(result.cells[0][1].wins, 1);
+});
+
+test('N1 também respeita o filtro histórico antes de ser liberado', () => {
+  const configuration = cfg(30, 1, 1, 1);
+  // C0 perde na 2; N1 fica retido no alvo 4 e só é liberado no alvo 5; ganha na 6.
+  const result = summarise(project(rows(6, [1, 4, 5, 6]), configuration, 0, {}, {
+    4: false, 5: true
+  }).events, configuration);
+  near(result.profit, 0);
+  assert.equal(result.wins, 1);
+  assert.equal(result.cells[0][0].losses, 1);
+  assert.equal(result.cells[1][0].wins, 1);
+});
+
 test('win parcial permanece no mesmo nível quando há mais recuperações configuradas', () => {
   const configuration = { ...cfg(30, 1, 1, 1), levelRecoveries: 2, recoveryDivider: 2 };
   // 1 ancora N0; 2 perde N0; 3 inicia N1; 4 recupera metade; 5 quita o restante em N1.

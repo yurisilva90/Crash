@@ -51,7 +51,10 @@
     return { config: cfg, rows, total: debt };
   }
 
-  function project(source, input, gapLimit = 20, signalByRoundId = {}) {
+  // levelGateByRoundId é exclusivo de simulações históricas. Quando
+  // informado, bloqueia somente N1+ até a condição estar presente. C1/C2
+  // continuam no mesmo ciclo iniciado pela âncora, como no motor original.
+  function project(source, input, gapLimit = 20, signalByRoundId = {}, levelGateByRoundId = null) {
     const cfg = normaliseConfig(input);
     const factor = cfg.payout / (cfg.payout - 1);
     const ordered = [...new Map((source || [])
@@ -64,6 +67,11 @@
     let lastRow = null;
     let missingSinceAnchor = 0;
     const maxGap = Math.max(0, Math.floor(Number(gapLimit) || 0));
+    const levelAllowed = roundId => {
+      if (!levelGateByRoundId) return true;
+      if (typeof levelGateByRoundId === 'function') return Boolean(levelGateByRoundId(roundId));
+      return Boolean(levelGateByRoundId[roundId]);
+    };
 
     function newCampaign(signal) {
       return { level: 0, cycle: 0, position: 0, base: 1, profit: 0,
@@ -152,8 +160,12 @@
       if (campaign && missing) campaign.estimated = true;
       let partial = { partialWin: false };
       if (campaign?.waitingLevel) {
-        campaign.waitingLevel = false;
-        campaign.base = nextBase(campaign, cfg.levelMode);
+        // O payout desta linha confirma a condição, mas não é usado como
+        // aposta retroativa. O novo C/N começa apenas na rodada posterior.
+        if (levelAllowed(roundId)) {
+          campaign.waitingLevel = false;
+          campaign.base = nextBase(campaign, cfg.levelMode);
+        }
       } else if (campaign) {
         partial = bet(true, roundId, completed);
       } else {
