@@ -411,7 +411,7 @@ function renderExposureCalculator(){
   const {payout,rounds,maxCycle,maxLevel,cycleMode,levelMode}=plan.config;
   const stakeField=document.querySelector('#exInitialStake');
   const initialStake=Math.max(.0001,Number(stakeField?.value)||1);
-  const money=value=>(Number(value)*initialStake).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' BCD';
+  const money=value=>(Number(value)*initialStake).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const factor=payout/(payout-1);
   const html=plan.rows.map(row=>{
     const lastEntry=row.base*Math.pow(factor,Math.max(0,rounds-1));
