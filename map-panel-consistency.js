@@ -12,6 +12,7 @@
   let historyCache = null;
   let panelCache = null;
   let trendCache = null;
+  let zoneCache = null;
   let suppressLegacyMap = false;
   const mapColumnState = {
     dimension: localStorage.getItem('crash-map-column-dimension-v1') || 'frequency',
@@ -87,6 +88,36 @@
     return value;
   }
 
+  // Contagem móvel de 2.000 rodadas no ponto que antecede cada ciclo.
+  // As faixas são proporcionais ao payout para preservar a mesma leitura em 20x e 30x.
+  function zoneRecords(payout) {
+    const target = Math.max(1.01, Number(payout) || 20);
+    const sources = [historicalRows, mapRows, rows];
+    const key = [...sources.map(source => `${source?.length || 0}:${source?.[0]?.round_id || ''}:${source?.at(-1)?.round_id || ''}`), target].join('|');
+    if (zoneCache?.key === key && zoneCache.snapshot === snapshot) return zoneCache.value;
+    const ordered = [...new Map(sources.flat().filter(row => Number.isFinite(Number(row?.round_id)))
+      .map(row => [Number(row.round_id), row])).values()]
+      .filter(row => Number(row.round_id) >= 9000000 && Number(row.round_id) <= 9999999)
+      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
+    const scale = 20 / target;
+    const limits = [80 * scale, 90 * scale, 100 * scale];
+    const byRoundId = {};
+    const window = [];
+    let hits = 0;
+    for (const row of ordered) {
+      const hit = Number(row.multiplier) >= target;
+      window.push(hit);
+      if (hit) hits++;
+      if (window.length > 2000 && window.shift()) hits--;
+      if (window.length < 2000) continue;
+      byRoundId[Number(row.round_id)] = hits < limits[0] ? 'under' : hits < limits[1] ? 'mid' :
+        hits < limits[2] ? 'upper' : 'over';
+    }
+    const value = byRoundId;
+    zoneCache = { key, snapshot, value };
+    return value;
+  }
+
   function signalDotTone(signal) {
     if (signal === 'green') return 'high';
     if (signal === 'yellow' || signal === 'blue' || signal === 'orange') return 'neutral';
@@ -94,7 +125,7 @@
   }
 
   function trendStamp(event, records) {
-    if (activeStrategy === '2x') return '';
+    if (activeStrategy === '2x' || ballIndicatorMode === 'zone') return '';
     const trend = records[event.anchorRoundId];
     if (!trend?.level) return '';
     const direction = trend.level > 0 ? 'up' : 'down';
@@ -157,19 +188,22 @@
     const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
+    const zones = ballIndicatorMode === 'zone' ? zoneRecords(config().payout) : null;
     target.classList.remove('compact-2x');
     target.innerHTML = visible.map(event => {
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
       const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
-      const classes = showBallSignals ? ` signal-${signal} signal-enabled` : '';
+      const signalOutline = showBallSignals && ballIndicatorMode !== 'zone' ? ` signal-${signal} signal-enabled` : '';
+      const zone = zones?.[event.anchorRoundId];
+      const zoneClass = zone ? ` zone-${zone}` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
       const dotTone = signalDotTone(event.signal);
       const dot = showBallSignals && dotTone ? `<i class="map-signal-dot ${dotTone}" aria-hidden="true"></i>` : '';
-      return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${dot}</span>`;
+      return `<span class="ball ${event.color}${signalOutline}${zoneClass}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${dot}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends, filteredSummary) {
@@ -481,6 +515,7 @@
     #mapView #balls{margin:5px -14px 8px;width:calc(100% + 28px);padding:12px 14px 9px;background:#050b14;border:0;border-radius:0;gap:8px;overflow:visible}
     #balls .ball,#recentBalls .ball{overflow:visible}
     #balls>.ball{position:relative;z-index:1}
+    #balls .ball.zone-under{box-shadow:0 0 0 2px var(--bg),0 0 0 4px #e78c99!important}#balls .ball.zone-mid{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--yellow)!important}#balls .ball.zone-upper{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--orange)!important}#balls .ball.zone-over{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--green)!important}
     #balls .map-signal-dot,#recentBalls .map-signal-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-signal-dot.low,#recentBalls .map-signal-dot.low{background:var(--red)}#balls .map-signal-dot.neutral,#recentBalls .map-signal-dot.neutral{background:var(--yellow)}#balls .map-signal-dot.high,#recentBalls .map-signal-dot.high{background:var(--green)}
     .ball .frequency-stamp{position:absolute;z-index:3;top:-4px;right:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:11px;padding:2px 1px;border-radius:6px;border:1px solid rgba(148,235,187,.55);background:rgba(9,45,48,.94);pointer-events:none}
     .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
