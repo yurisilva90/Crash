@@ -548,7 +548,10 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
     const recovery=document.querySelector('#currentRisk');
     const recoveryNote=document.querySelector('#recoveryNote');
     const recoveryStats=document.querySelector('#recoveryStats');
-    if(recovery)recovery.textContent=`N${pending.level} · C${pending.cycle}`;
+    if(recovery){
+      recovery.classList.add('recovery-progress');
+      recovery.innerHTML=`<span>C${pending.cycle}/C${state.maxCycle}</span><span>N${pending.level}/N${state.maxLevel}</span>`;
+    }
     if(recoveryNote)recoveryNote.textContent=`N0–N${state.maxLevel} · C0–C${state.maxCycle}`;
     if(recoveryStats){
       recoveryStats.textContent=pending.waitingLevel
@@ -558,6 +561,33 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   };
   render=()=>{previousRender();renderCampaignHeaderCards()};
   if(snapshot)render();
+})();
+</script>
+<style>
+  /* O card não cresce: ciclo e nível ficam legíveis em duas linhas curtas. */
+  #recoveryCard{padding-block:8px!important}
+  #recoveryCard .recovery-progress{display:grid;gap:2px;margin-top:5px;font-size:1.02rem!important;line-height:1.05}
+  #recoveryCard .recovery-progress span{display:block;white-space:nowrap}
+  #recoveryCard .recovery-progress span+span{color:var(--muted);font-size:.78em;font-weight:750}
+</style>
+<script>
+/* Preferência de filtro da sessão. O executor, quando conectado, lê esta chave. */
+(()=>{
+  const panel=document.querySelector('#strategyConfig');
+  if(!panel||document.querySelector('#executionFilter'))return;
+  const field=document.createElement('div');
+  field.className='field';
+  field.innerHTML='<label for="executionFilter">Filtro de frequência</label><select id="executionFilter" aria-label="Filtro de frequência"><option value="off">Sem filtro</option><option value="plus10">+10% ou mais</option><option value="plus20">+20% ou mais</option></select>';
+  panel.append(field);
+  const select=field.querySelector('select');
+  const saved=localStorage.getItem('crash-execution-filter-v1');
+  if(['off','plus10','plus20'].includes(saved))select.value=saved;
+  const save=()=>{
+    localStorage.setItem('crash-execution-filter-v1',select.value);
+    window.crashExecutionSettings={...(window.crashExecutionSettings||{}),filter:select.value};
+  };
+  select.addEventListener('change',save);
+  save();
 })();
 </script>
 <script src="dashboard-notifications.js"></script></body></html>
