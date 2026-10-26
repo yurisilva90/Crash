@@ -59,7 +59,8 @@
     return events.filter(event =>
       (!selectedBuckets.length || selectedBuckets.includes(bucketFor(event, trends))) &&
       (!selectedRows.length || selectedRows.some(selectedRow => rowBucket(event) === selectedRow ||
-        (selectedRow === 'wins' && event.color !== 'red' && !event.partialWin && !event.pending))));
+        // A linha Win é intencionalmente só a bolinha verde clara: N0/C0.
+        (selectedRow === 'wins' && event.color === 'green'))));
   }
 
   function trendRecords(payout, gap) {
@@ -176,7 +177,7 @@
     // O Total mostra somente as colunas/linhas acesas. As outras colunas
     // continuam na tabela para comparação, mas não entram no recorte final.
     const summary = filteredSummary || finance.summarise(selectedEvents(selected, trends), cfg);
-    const total = summary.wins + summary.losses;
+    const total = summary.directWins + summary.losses;
     const marker = ([key, label, direction, steps]) => {
       const isFrequency = mapColumnState.dimension === 'frequency';
       const stamp = isFrequency && direction !== 'flat'
@@ -188,12 +189,12 @@
     const rowClass = key => !mapColumnState.rows.length ? '' : (mapColumnState.rows.includes(key) ? ' map-active' : ' map-dim');
     const cell = (key, field, showProfit = false) => {
       const bucket = summaries[key];
-      const number = field === 'wins' ? bucket.wins : bucket.losses;
-      const bucketTotal = bucket.wins + bucket.losses;
+      const number = field === 'directWins' ? bucket.directWins : bucket.losses;
+      const bucketTotal = bucket.directWins + bucket.losses;
       return `<td data-map-column="${key}" class="${columnClass(key)}"><strong class="${showProfit ? tone(bucket.profit) : ''}">${int(number)}</strong><small>${pct(number, bucketTotal)}</small>${showProfit ? `<small class="score-profit ${tone(bucket.profit)}">${bucket.estimated ? '≈' : ''}${units(bucket.profit)}</small>` : ''}</td>`;
     };
     const overall = (field, showProfit = false) => {
-      const number = summary[field];
+      const number = field === 'directWins' ? summary.directWins : summary[field];
       return `<td><strong class="${showProfit ? tone(summary.profit) : ''}">${int(number)}</strong><small>${pct(number, total)}</small>${showProfit ? `<small class="score-profit ${tone(summary.profit)}">${summary.estimated ? '≈' : ''}${units(summary.profit)}</small>` : ''}</td>`;
     };
     // A seleção das colunas serve para o placar Win/Loss e para o Total.
@@ -203,8 +204,9 @@
       !mapColumnState.selected.length || mapColumnState.selected.includes(bucketFor(event, trends))
     ), cfg);
     const cycleCell = (item, level, cycle, extraClass = '') => {
-      const result = item.cells[level]?.[cycle] || { wins: 0, losses: 0 }, total = result.wins + result.losses;
-      return `<span class="map-cycle-value ${extraClass}"><strong>${int(result.wins)}W · ${int(result.losses)}L</strong><small>${pct(result.wins, total)}</small></span>`;
+      const result = item.cells[level]?.[cycle] || { directWins: 0, recoveryWins: 0, losses: 0 };
+      const total = result.directWins + result.recoveryWins + result.losses;
+      return `<span class="map-cycle-value ${extraClass}"><strong>${int(result.directWins)}W · ${int(result.recoveryWins)}R · ${int(result.losses)}L</strong><small>${pct(result.directWins, total)} diretos</small></span>`;
     };
     const cycleRows = cycleSummary.cells.map((_, level) => `<tr class="map-level-section"><th colspan="${shownColumns.length + 2}">N${level}</th></tr>${Array.from({ length: cfg.recoveries }, (_, cycle) =>
       `<tr class="map-cycle-row"><th>C${cycle}</th><td colspan="${shownColumns.length + 1}"><div class="map-cycle-values" style="--cycle-columns:${columns.length + 1}">${columns.map(([key]) => cycleCell(summaries[key], level, cycle)).join('')}${cycleCell(cycleSummary, level, cycle, 'map-cycle-total')}</div></td></tr>`
@@ -215,7 +217,7 @@
     const detailTitle = mapColumnState.expanded ? 'Recolher colunas detalhadas' : 'Mostrar colunas detalhadas';
     const detailControls = `<button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div>`;
     const columnCount = shownColumns.length + 2;
-    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar wins">Win</th>${shownColumns.map(([key]) => cell(key, 'wins', true)).join('')}${overall('wins', true)}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos</th></tr>${cycleRows}</tbody></table>`;
+    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar somente wins diretos">Win direto</th>${shownColumns.map(([key]) => cell(key, 'directWins')).join('')}${overall('directWins')}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos · W direto · R recuperação · L loss</th></tr>${cycleRows}</tbody></table>`;
     target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
       const key = button.dataset.mapColumn || null;
       mapColumnState.selected = key === null ? [] : (mapColumnState.selected.includes(key) ? mapColumnState.selected.filter(item => item !== key) : [...mapColumnState.selected, key]);
@@ -347,11 +349,15 @@
     if (riskStats) riskStats.textContent = '';
     const outcomes = all.events.flatMap(event => event.completed || []);
     let streak = 0;
-    for (let index = outcomes.length - 1; index >= 0 && outcomes[index].win; index--) streak++;
+    for (let index = outcomes.length - 1; index >= 0; index--) {
+      const outcome = outcomes[index];
+      if (!outcome.win) break;
+      if (finance.isDirectWinner(outcome)) streak++;
+    }
     const winStreak = document.querySelector('#winStreak');
     if (winStreak) winStreak.textContent = int(streak);
     const winNote = document.querySelector('#winStreakNote');
-    if (winNote) winNote.textContent = `N0–N${cfg.levels} · C0–C${cfg.recoveries - 1} · ${cfg.cycleRounds}R`;
+    if (winNote) winNote.textContent = `somente N0/C0 · ${cfg.cycleRounds}R`;
     const recovery = document.querySelector('#currentRisk');
     const state = all.pending;
     if (recovery) recovery.textContent = state && (state.level > 0 || state.cycle > 0)
@@ -384,12 +390,12 @@
       let streak = 0;
       const record = () => { if (streak) streaks.set(streak, (streaks.get(streak) || 0) + 1); streak = 0; };
       for (const outcome of summary.outcomes) {
-        if (outcome.win) streak++;
-        else record();
+        if (finance.isDirectWinner(outcome)) streak++;
+        else if (!outcome.win) record();
       }
       record();
       const summaryNode = document.querySelector('#winsSummary');
-      if (summaryNode) summaryNode.textContent = `${label} rodadas · ${summary.wins} wins · ${summary.losses} losses · ${simulationUnits(summary.profit)}`;
+      if (summaryNode) summaryNode.textContent = `${label} rodadas · ${summary.directWins} wins diretos · ${summary.recoveryWins} recuperações · ${summary.losses} losses · ${simulationUnits(summary.profit)}`;
       const list = document.querySelector('#winsList');
       if (list) list.innerHTML = [...streaks.entries()].sort((a, b) => a[0] - b[0])
         .map(([length, count]) => `<div class="recovery-row"><span>${length} wins</span><strong>${int(count)}</strong></div>`).join('') || '<div class="note">Sem sequências concluídas neste recorte.</div>';
@@ -422,7 +428,7 @@
       const signals = frequency.calculate(sample, cfg.payout, gap);
       const summary = finance.summarise(finance.project(sample, cfg, gap, signals.byRoundId).events, cfg);
       const card = (label, value, className, note = '') => `<article class="card"><div class="label">${label}</div><div class="value ${className}">${value}</div>${note ? `<div class="note">${note}</div>` : ''}</article>`;
-      target.innerHTML = card('Losses de ciclo', int(summary.cycleLosses), 'risk', `${int(summary.wins)} wins · ${int(summary.losses)} perdas finais`) +
+      target.innerHTML = card('Losses de ciclo', int(summary.cycleLosses), 'risk', `${int(summary.directWins)} wins diretos · ${int(summary.recoveryWins)} recuperações · ${int(summary.losses)} perdas finais`) +
         card('Loss médio', summary.cycleLosses ? summary.averageLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', 'risk') +
         card('Loss máximo', summary.cycleLosses ? int(summary.maxLoss) : '—', 'risk') +
         card('Resultado simulado', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.profit)}`, summary.profit >= 0 ? 'mult' : 'risk') +

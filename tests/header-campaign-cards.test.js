@@ -17,6 +17,14 @@ const rows = multipliers => multipliers.map((multiplier, index) => ({
 }
 
 {
+  // Uma recuperação entre dois wins diretos não zera a sequência; ela é neutra.
+  const result = cards.derive(rows([2, 2, 1.2, 2, 2, 2]), {
+    payout: 2, cycleRounds: 1, recoveries: 1, levels: 1, levelRecoveries: 1
+  }, { engine: finance });
+  assert.equal(result.directStreak, 2);
+}
+
+{
   // Após loss de N0, o card preserva N1 pendente até a próxima âncora.
   const result = cards.derive(rows([2, 1.2]), {
     payout: 2, cycleRounds: 1, recoveries: 1, levels: 1, levelRecoveries: 1
@@ -25,11 +33,11 @@ const rows = multipliers => multipliers.map((multiplier, index) => ({
 }
 
 {
-  // Win em C1 também quebra a sequência de wins diretos.
+  // Win em C1 é recuperação neutra e não interrompe o último win direto.
   const result = cards.derive(rows([2, 2, 1.2, 2]), {
     payout: 2, cycleRounds: 1, recoveries: 2, levels: 0, levelRecoveries: 1
   }, { engine: finance });
-  assert.equal(result.directStreak, 0);
+  assert.equal(result.directStreak, 1);
 }
 
 console.log('header-campaign-cards: ok');

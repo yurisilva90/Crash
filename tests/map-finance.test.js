@@ -50,7 +50,9 @@ test('C1 R recupera a perda de C0; C1 L recupera e lucra uma unidade de payout',
     assert.equal(result.losses, 0);
     assert.equal(result.cells[0][0].losses, 1);
     assert.equal(result.cells[0][1].wins, 1);
-    assert.equal(result.heat[0], 1);
+    assert.equal(result.cells[0][1].directWins, 0);
+    assert.equal(result.cells[0][1].recoveryWins, 1);
+    assert.equal(result.heat[0], 0);
   }
 });
 
@@ -142,6 +144,8 @@ test('win parcial recebe jade e não é contado como win financeiro concluído',
   assert.equal(finalRecovery.partialWin, false);
   const result = summarise(report.events, configuration);
   assert.equal(result.wins, 1);
+  assert.equal(result.directWins, 0);
+  assert.equal(result.recoveryWins, 2);
   assert.equal(result.losses, 0);
 });
 
@@ -177,7 +181,7 @@ test('recortes usam os mesmos eventos para placar, card, heatmap e níveis', () 
   const result = summarise(lastTwo, configuration);
   assert.equal(lastTwo.length, 2);
   assert.equal(result.wins + result.losses, 2);
-  assert.equal(result.heat.reduce((sum, count) => sum + count, 0), result.wins);
+  assert.equal(result.heat.reduce((sum, count) => sum + count, 0), result.directWins);
   near(result.profit, Object.values(result.buckets).reduce((sum, bucket) => sum + bucket.profit, 0));
 });
 

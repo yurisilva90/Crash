@@ -30,6 +30,14 @@
     return ['green', 'yellow', 'blue', 'red'].find(tone => raw.startsWith(tone)) || 'unknown';
   }
 
+  // Win direto é o único que gera a bolinha verde clara: uma campanha que
+  // venceu exclusivamente em N0/C0, sem ciclo nem nível de recuperação.
+  function isDirectWinner(outcome) {
+    const cycles = Array.isArray(outcome?.cycles) ? outcome.cycles : [];
+    return Boolean(outcome?.win) && cycles.length === 1 &&
+      cycles[0]?.win === true && cycles[0]?.level === 0 && cycles[0]?.cycle === 0;
+  }
+
   function exposure(input) {
     const cfg = normaliseConfig(input);
     const net = cfg.payout - 1;
@@ -229,24 +237,33 @@
   function summarise(events, input) {
     const cfg = normaliseConfig(input);
     const buckets = Object.fromEntries(['green', 'yellow', 'blue', 'red', 'unknown'].map(key =>
-      [key, { wins: 0, losses: 0, profit: 0, cycleWins: Array(cfg.maxCycle + 1).fill(0) }]));
+      [key, { wins: 0, directWins: 0, recoveryWins: 0, losses: 0, profit: 0, cycleWins: Array(cfg.maxCycle + 1).fill(0) }]));
     const cells = Array.from({ length: cfg.maxLevel + 1 }, () =>
-      Array.from({ length: cfg.maxCycle + 1 }, () => ({ wins: 0, losses: 0 })));
+      Array.from({ length: cfg.maxCycle + 1 }, () => ({ wins: 0, directWins: 0, recoveryWins: 0, losses: 0 })));
     const heat = Array(cfg.rounds).fill(0);
     const outcomes = events.flatMap(event => event.completed || []);
     let profit = 0, equity = 0, peak = 0, maxDD = 0, estimated = 0;
+    let directWins = 0, recoveryWins = 0;
     let lossRun = 0;
     let cycleLosses = 0;
     const lossRuns = [];
     for (const outcome of outcomes) {
       const bucket = buckets[normaliseSignal(outcome.signal)];
       bucket[outcome.win ? 'wins' : 'losses']++;
+      const direct = isDirectWinner(outcome);
+      if (direct) { bucket.directWins++; directWins++; }
       bucket.profit += outcome.profit;
       profit += outcome.profit;
       if (outcome.estimated) estimated++;
       for (const cycle of outcome.cycles) {
         const cell = cells[cycle.level]?.[cycle.cycle];
-        if (cell) cell[cycle.win ? 'wins' : 'losses']++;
+        if (cell) {
+          cell[cycle.win ? 'wins' : 'losses']++;
+          if (cycle.win) {
+            if (direct) cell.directWins++;
+            else { cell.recoveryWins++; recoveryWins++; }
+          }
+        }
         if (cycle.win && bucket.cycleWins[cycle.cycle] !== undefined) bucket.cycleWins[cycle.cycle]++;
         if (cycle.win) {
           if (lossRun) lossRuns.push(lossRun);
@@ -256,7 +273,7 @@
           lossRun++;
         }
       }
-      if (outcome.win) {
+      if (direct) {
         if (outcome.position >= 1 && outcome.position <= cfg.rounds) heat[outcome.position - 1]++;
       }
       for (const delta of outcome.deltas) {
@@ -270,13 +287,13 @@
     const losses = outcomes.length - wins;
     const bucketProfit = Object.values(buckets).reduce((sum, item) => sum + item.profit, 0);
     const heatWins = heat.reduce((sum, item) => sum + item, 0);
-    if (Math.abs(bucketProfit - profit) > 1e-6 || Math.abs(equity - profit) > 1e-6 || heatWins !== wins)
+    if (Math.abs(bucketProfit - profit) > 1e-6 || Math.abs(equity - profit) > 1e-6 || heatWins !== directWins)
       throw new Error('Inconsistência interna no resultado do mapa');
-    return { buckets, cells, heat, wins, losses, cycleLosses, profit, maxDD, estimated,
+    return { buckets, cells, heat, wins, directWins, recoveryWins, losses, cycleLosses, profit, maxDD, estimated,
       averageLoss: lossRuns.length ? cycleLosses / lossRuns.length : 0,
       maxLoss: lossRuns.length ? Math.max(...lossRuns) : 0,
       outcomes };
   }
 
-  return { cycleCost, exposure, project, summarise };
+  return { cycleCost, exposure, project, summarise, isDirectWinner };
 });

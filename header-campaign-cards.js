@@ -18,7 +18,10 @@
     const projection = engine.project(rows, config, options.gapLimit ?? 20);
     let directStreak = 0;
     for (const outcome of projection.events.flatMap(event => event.completed || [])) {
-      directStreak = isDirectWinner(outcome) ? directStreak + 1 : 0;
+      // Recuperação concluída é neutra: não soma win direto, mas tampouco
+      // interrompe a sequência. Apenas uma perda final zera o contador.
+      if (isDirectWinner(outcome)) directStreak++;
+      else if (!outcome.win) directStreak = 0;
     }
 
     const cfg = projection.config;
