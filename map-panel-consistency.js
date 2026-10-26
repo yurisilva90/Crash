@@ -470,7 +470,7 @@
     #mapView #balls{margin:5px -14px 8px;width:calc(100% + 28px);padding:12px 14px 9px;background:#050b14;border:0;border-radius:0;gap:8px;overflow:visible}
     #balls .ball,#recentBalls .ball{overflow:visible}
     #balls>.ball{position:relative;z-index:1}
-    #balls .map-signal-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-signal-dot.low{background:var(--red)}#balls .map-signal-dot.neutral{background:var(--yellow)}#balls .map-signal-dot.high{background:var(--green)}
+    #balls .map-signal-dot,#recentBalls .map-signal-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-signal-dot.low,#recentBalls .map-signal-dot.low{background:var(--red)}#balls .map-signal-dot.neutral,#recentBalls .map-signal-dot.neutral{background:var(--yellow)}#balls .map-signal-dot.high,#recentBalls .map-signal-dot.high{background:var(--green)}
     .ball .frequency-stamp{position:absolute;z-index:3;top:-4px;right:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:11px;padding:2px 1px;border-radius:6px;border:1px solid rgba(148,235,187,.55);background:rgba(9,45,48,.94);pointer-events:none}
     .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     .ball .frequency-stamp i+i{margin-top:-1px}
