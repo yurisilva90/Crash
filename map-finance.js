@@ -95,15 +95,16 @@
         cycles: current.cycles, estimated: current.estimated };
     }
     function colorForCompleted(completed, partialWin = false) {
-      // Jade é um acerto que reduziu a dívida, mas não concluiu o resultado.
-      // Não é contado como win final no resumo financeiro.
+      // Jade identifica um win de recuperação em N1+. Em R2/R3, inclusive o
+      // último win que quita a dívida permanece jade; verde claro é exclusivo
+      // de win direto em N0/C0.
       if (partialWin) return 'jade';
       const outcome = completed.at(-1);
       if (!outcome) return 'pending';
       if (!outcome.win) return 'red';
+      if (outcome.cycles.some(cycle => cycle.win && cycle.level > 0)) return 'jade';
       const cycle = outcome.cycles.at(-1)?.cycle || 0;
-      // A cor representa somente onde o win aconteceu dentro da sequência C0/C1/C2.
-      // O nível não altera a cor: N1C0 continua verde, N1C1 amarelo e assim por diante.
+      // Fora de níveis de recuperação, a cor representa o C onde o win ocorreu.
       return cycle === 0 ? 'green' : cycle === 1 ? 'yellow' : 'orange';
     }
     function bet(targetHit, roundId, finished) {

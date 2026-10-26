@@ -70,7 +70,7 @@ test('divisor da perda altera igualmente C1, N1 e a exposição, sem mudar C0', 
   }
 });
 
-test('a cor da bolinha representa o ciclo, não uma faixa antiga dentro de R', () => {
+test('a cor da bolinha representa o ciclo fora da recuperação e jade em N1+', () => {
   const configuration = cfg(30, 31, 2);
   const c1 = project(rows(35, [1, 35]), configuration, 0).events.at(-1);
   assert.equal(c1.label, 34);
@@ -80,7 +80,7 @@ test('a cor da bolinha representa o ciclo, não uma faixa antiga dentro de R', (
   assert.equal(c2.color, 'orange');
 
   const levelC0 = project(rows(64, [1, 33, 64]), cfg(30, 31, 1, 1), 0).events.at(-1);
-  assert.equal(levelC0.color, 'green');
+  assert.equal(levelC0.color, 'jade');
 });
 
 test('N1 só começa depois do próximo alvo e respeita R/L do nível', () => {
@@ -137,6 +137,9 @@ test('win parcial recebe jade e não é contado como win financeiro concluído',
   assert.equal(partial.color, 'jade');
   assert.equal(partial.partialWin, true);
   near(partial.remainingDebt, 0.5);
+  const finalRecovery = report.events.find(event => event.roundId === 5);
+  assert.equal(finalRecovery.color, 'jade');
+  assert.equal(finalRecovery.partialWin, false);
   const result = summarise(report.events, configuration);
   assert.equal(result.wins, 1);
   assert.equal(result.losses, 0);
