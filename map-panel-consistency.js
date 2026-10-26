@@ -83,42 +83,26 @@
   // A faixa de 2.000 é calculada no mesmo ponto de ancoragem da campanha:
   // inclui a rodada que antecede a entrada e nunca usa resultados futuros.
   // Os limites de 20x (<80, 80–89, 90–99 e 100+) são proporcionais ao payout.
-  function frequencyBandRecords(payout, gap) {
+  function frequencyBandRecords(source, payout) {
     const target = Math.max(1.01, Number(payout) || 20);
-    const limit = Math.max(0, Math.floor(Number(gap) || 0));
-    const combined = new Map();
-    for (const source of [historicalRows, mapRows, rows]) {
-      for (const row of source || []) {
-        const id = Number(row?.round_id);
-        const multiplier = Number(row?.multiplier);
-        if (Number.isFinite(id) && Number.isFinite(multiplier)) combined.set(id, row);
-      }
-    }
-    const ordered = [...combined.values()].sort((a, b) => Number(a.round_id) - Number(b.round_id));
+    const ordered = [...(source || [])]
+      .filter(row => Number.isFinite(Number(row?.round_id)) && Number.isFinite(Number(row?.multiplier)))
+      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
     const scale = 20 / target;
     const thresholds = [80 * scale, 90 * scale, 100 * scale];
     const byRoundId = {};
-    let previous = null;
-    let segmentStart = null;
-    let hitStart = 0;
-    const hitIds = [];
+    const window = [];
+    let hits = 0;
     for (const row of ordered) {
       const id = Number(row.round_id);
-      if (previous === null || id - previous - 1 > limit) {
-        hitIds.length = 0;
-        hitStart = 0;
-        segmentStart = id;
-      }
-      if (Number(row.multiplier) >= target) hitIds.push(id);
-      while (hitStart < hitIds.length && hitIds[hitStart] <= id - 2000) hitStart++;
-      const ready = id - segmentStart + 1 >= 2000;
-      const hits = hitIds.length - hitStart;
-      // Mesmo durante a formação inicial, a faixa tem valor visual: ela usa
-      // a contagem disponível e evita buracos na régua do Mapa.
-      const tone = hits < thresholds[0] ? 'under' : hits < thresholds[1] ? 'mid' :
+      const hit = Number(row.multiplier) >= target;
+      window.push(hit);
+      if (hit) hits++;
+      if (window.length > 2000 && window.shift()) hits--;
+      const ready = window.length === 2000;
+      const tone = !ready ? 'unknown' : hits < thresholds[0] ? 'under' : hits < thresholds[1] ? 'mid' :
         hits < thresholds[2] ? 'upper' : 'over';
       byRoundId[id] = { tone, hits, ready };
-      previous = id;
     }
     return byRoundId;
   }
@@ -207,7 +191,7 @@
     panelCache = { key, snapshot, value };
     return value;
   }
-  function drawBalls(selected, trends) {
+  function drawBalls(selected, trends, source) {
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
@@ -215,7 +199,7 @@
     const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
-    const bands = frequencyBandRecords(config().payout, simulationGapLimit());
+    const bands = frequencyBandRecords(source, config().payout);
     target.classList.remove('compact-2x');
     target.innerHTML = `${frequencyRails(visible, bands)}${visible.map(event => {
       const row = event.row || {};
@@ -359,12 +343,12 @@
   function draw() {
     if (!snapshot) return;
     try {
-      const { selected, cfg, gap, all } = projection();
+      const { selected, cfg, gap, all, source } = projection();
       const panel = panelProjection();
       const trends = activeStrategy === '2x' ? {} : trendRecords(cfg.payout, gap);
       const filtered = selectedEvents(selected, trends);
       const summary = finance.summarise(filtered, cfg);
-      drawBalls(selected, trends);
+      drawBalls(selected, trends, source);
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
       drawScore(selected, cfg, trends, summary);
