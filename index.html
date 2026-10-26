@@ -561,6 +561,14 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   };
   render=()=>{previousRender();renderCampaignHeaderCards()};
   if(snapshot)render();
+
+  /* Há uma rotina legada registrada no evento load que também redesenha este
+     card. Reencadeamos depois dela para que nunca volte ao formato "0 de 3". */
+  window.addEventListener('load',()=>{
+    const renderAfterLegacyHeader=render;
+    render=()=>{renderAfterLegacyHeader();renderCampaignHeaderCards()};
+    renderCampaignHeaderCards();
+  });
 })();
 </script>
 <style>
