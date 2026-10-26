@@ -36,6 +36,13 @@
     return ['green', 'yellow', 'blue', 'red'].includes(event.signal) ? event.signal : 'red';
   }
 
+  // É a mesma classificação do ponto discreto: alto, neutro ou baixo.
+  function signalBucket(event) {
+    if (event.signal === 'green') return 'high';
+    if (event.signal === 'yellow' || event.signal === 'blue' || event.signal === 'orange') return 'neutral';
+    return 'low';
+  }
+
   function rowBucket(event) {
     if (event.color === 'red') return 'losses';
     if (event.partialWin) return 'partial';
@@ -48,9 +55,9 @@
   }
 
   function bucketFor(event, records) {
-    return mapColumnState.dimension === 'frequency'
-      ? trendBucket(event, records)
-      : payoutBucket(event);
+    if (mapColumnState.dimension === 'frequency') return trendBucket(event, records);
+    if (mapColumnState.dimension === 'payout') return payoutBucket(event);
+    return signalBucket(event);
   }
 
   function selectedEvents(events, trends) {
@@ -177,7 +184,11 @@
       ['green', '250 e 1.000 ativos', 'green'], ['yellow', 'Somente 250 ativo', 'yellow'],
       ['blue', 'Somente 1.000 ativo', 'blue'], ['red', 'Nenhum payout ativo', 'red']
     ];
-    const columns = mapColumnState.dimension === 'frequency' ? frequencyColumns : payoutColumns;
+    const signalColumns = [
+      ['high', 'Sinal alto', 'high'], ['neutral', 'Sinal neutro', 'neutral'], ['low', 'Sinal baixo', 'low']
+    ];
+    const columns = mapColumnState.dimension === 'frequency' ? frequencyColumns
+      : mapColumnState.dimension === 'payout' ? payoutColumns : signalColumns;
     const shownColumns = mapColumnState.expanded ? columns : [];
     const groups = Object.fromEntries(columns.map(([key]) => [key, []]));
     for (const event of selected) groups[bucketFor(event, trends)]?.push(event);
@@ -224,9 +235,9 @@
     const activePeriod = windowSize() === Infinity ? 'all' : String(windowSize());
     const periodOptions = mapPeriodOptions.map(([value, label]) => `<option value="${value}" ${value === activePeriod ? 'selected' : ''}>${label}</option>`).join('');
     const detailTitle = mapColumnState.expanded ? 'Recolher colunas detalhadas' : 'Mostrar colunas detalhadas';
-    const detailControls = `<button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}">Frequência</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}">Payout</button></div>`;
+    const detailControls = `<button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}" title="Frequência">Freq</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}" title="Payout">Pay</button><button type="button" data-map-dimension="signal" role="tab" aria-selected="${mapColumnState.dimension === 'signal'}" title="Sinal alto, neutro ou baixo">Sig</button></div>`;
     const columnCount = shownColumns.length + 2;
-    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar somente wins diretos">Win direto</th>${shownColumns.map(([key]) => cell(key, 'directWins')).join('')}${overall('directWins')}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos · W direto · R recuperação · L loss</th></tr>${cycleRows}</tbody></table>`;
+    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Sinal</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar somente wins diretos">Win direto</th>${shownColumns.map(([key]) => cell(key, 'directWins', true)).join('')}${overall('directWins', true)}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos · W direto · R recuperação · L loss</th></tr>${cycleRows}</tbody></table>`;
     target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
       const key = button.dataset.mapColumn || null;
       mapColumnState.selected = key === null ? [] : (mapColumnState.selected.includes(key) ? mapColumnState.selected.filter(item => item !== key) : [...mapColumnState.selected, key]);
@@ -492,7 +503,7 @@
     #signalScore .map-selection-layout.grouped{gap:0}
     #signalScore .map-selection-layout.grouped span{transform:none;background:var(--green)}
     #signalScore .map-column-head,#signalScore .map-row-head{padding:2px!important;cursor:pointer}#signalScore .map-column-marker{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:2px solid currentColor;border-radius:50%;background:transparent;color:var(--muted);pointer-events:none}
-    #signalScore .map-column-marker.signal-green{color:var(--green)}#signalScore .map-column-marker.signal-yellow{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red{color:var(--red)}
+    #signalScore .map-column-marker.signal-green,#signalScore .map-column-marker.signal-high{color:var(--green)}#signalScore .map-column-marker.signal-yellow,#signalScore .map-column-marker.signal-neutral{color:var(--yellow)}#signalScore .map-column-marker.signal-blue{color:var(--blue)}#signalScore .map-column-marker.signal-red,#signalScore .map-column-marker.signal-low{color:var(--red)}
     #signalScore .map-total-filter.selected{color:var(--green)}
     #signalScore .frequency-marker{color:var(--muted)}#signalScore .frequency-marker.flat-marker{color:transparent;border-color:transparent}
     #signalScore .frequency-marker .frequency-stamp{position:static;display:flex;flex-direction:column;align-items:center;justify-content:center;width:auto;height:auto;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
