@@ -80,59 +80,10 @@
     return value;
   }
 
-  // A faixa de 2.000 é calculada no mesmo ponto de ancoragem da campanha:
-  // inclui a rodada que antecede a entrada e nunca usa resultados futuros.
-  // Os limites de 20x (<80, 80–89, 90–99 e 100+) são proporcionais ao payout.
-  function frequencyBandRecords(source, payout) {
-    const target = Math.max(1.01, Number(payout) || 20);
-    const ordered = [...(source || [])]
-      .filter(row => Number.isFinite(Number(row?.round_id)) && Number.isFinite(Number(row?.multiplier)))
-      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
-    const scale = 20 / target;
-    const thresholds = [80 * scale, 90 * scale, 100 * scale];
-    const byRoundId = {};
-    const window = [];
-    let hits = 0;
-    for (const row of ordered) {
-      const id = Number(row.round_id);
-      const hit = Number(row.multiplier) >= target;
-      window.push(hit);
-      if (hit) hits++;
-      if (window.length > 2000 && window.shift()) hits--;
-      const ready = window.length === 2000;
-      const tone = !ready ? 'unknown' : hits < thresholds[0] ? 'under' : hits < thresholds[1] ? 'mid' :
-        hits < thresholds[2] ? 'upper' : 'over';
-      byRoundId[id] = { tone, hits, ready };
-    }
-    return byRoundId;
-  }
-
   function signalDotTone(signal) {
     if (signal === 'green') return 'high';
     if (signal === 'yellow' || signal === 'blue' || signal === 'orange') return 'neutral';
     return signal === 'red' ? 'low' : '';
-  }
-
-  function frequencyRails(events, records) {
-    const rails = [];
-    for (let rowStart = 0; rowStart < events.length; rowStart += 10) {
-      const rowEnd = Math.min(events.length, rowStart + 10);
-      let runStart = rowStart;
-      let runTone = records[events[rowStart]?.anchorRoundId]?.tone || 'unknown';
-      const close = end => {
-        if (runTone === 'unknown' || end <= runStart) return;
-        rails.push(`<i class="map-frequency-rail band-${runTone}" style="--map-band-row:${Math.floor(runStart / 10) + 1};--map-band-column:${runStart % 10 + 1};--map-band-span:${end - runStart}" aria-hidden="true"></i>`);
-      };
-      for (let index = rowStart + 1; index <= rowEnd; index++) {
-        const nextTone = index < rowEnd ? (records[events[index]?.anchorRoundId]?.tone || 'unknown') : null;
-        if (nextTone !== runTone) {
-          close(index);
-          runStart = index;
-          runTone = nextTone;
-        }
-      }
-    }
-    return rails.join('');
   }
 
   function trendStamp(event, records) {
@@ -191,7 +142,7 @@
     panelCache = { key, snapshot, value };
     return value;
   }
-  function drawBalls(selected, trends, source) {
+  function drawBalls(selected, trends) {
     const target = document.querySelector('#balls');
     if (!target) return;
     hideRoundTooltip();
@@ -199,9 +150,8 @@
     const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
-    const bands = frequencyBandRecords(source, config().payout);
     target.classList.remove('compact-2x');
-    target.innerHTML = `${frequencyRails(visible, bands)}${visible.map(event => {
+    target.innerHTML = visible.map(event => {
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
@@ -213,7 +163,7 @@
       const dotTone = signalDotTone(event.signal);
       const dot = showBallSignals && dotTone ? `<i class="map-signal-dot ${dotTone}" aria-hidden="true"></i>` : '';
       return `<span class="ball ${event.color}${classes}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${dot}</span>`;
-    }).join('')}` || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
+    }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends, filteredSummary) {
     const target = document.querySelector('#signalScore');
@@ -343,12 +293,12 @@
   function draw() {
     if (!snapshot) return;
     try {
-      const { selected, cfg, gap, all, source } = projection();
+      const { selected, cfg, gap, all } = projection();
       const panel = panelProjection();
       const trends = activeStrategy === '2x' ? {} : trendRecords(cfg.payout, gap);
       const filtered = selectedEvents(selected, trends);
       const summary = finance.summarise(filtered, cfg);
-      drawBalls(selected, trends, source);
+      drawBalls(selected, trends);
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
       drawScore(selected, cfg, trends, summary);
@@ -517,11 +467,9 @@
     html[data-theme="light"] .speed-ring.frequency-unknown{background:radial-gradient(circle at center,#fff 61%,transparent 62%),conic-gradient(var(--muted) var(--meter),#d8e2ed 0)}
     #confirmShort.frequency-active{border-color:var(--yellow);color:var(--yellow)}
     #confirmLong.frequency-active{border-color:var(--blue);color:var(--blue)}
-    #balls{position:relative;isolation:isolate;--map-band-pad-top:14px;--map-band-pad-left:4px}
+    #mapView #balls{margin:5px -14px 8px;width:calc(100% + 28px);padding:12px 14px 9px;background:#050b14;border:0;border-radius:0;gap:8px;overflow:visible}
     #balls .ball,#recentBalls .ball{overflow:visible}
-    #balls>.ball{position:relative;z-index:2}
-    #balls .map-frequency-rail{position:absolute;z-index:0;pointer-events:none;left:calc(var(--map-band-pad-left) + (var(--map-band-column) - 1) * (var(--sequence-cell) + var(--sequence-gap)) + 1px);top:calc(var(--map-band-pad-top) + (var(--map-band-row) - 1) * (var(--sequence-cell) + var(--sequence-gap)) + 8px);width:calc(var(--map-band-span) * var(--sequence-cell) + (var(--map-band-span) - 1) * var(--sequence-gap) - 2px);height:calc(var(--sequence-cell) - 16px);min-height:8px;border-radius:999px;opacity:.78}
-    #balls .map-frequency-rail.band-under{background:#e78c99}#balls .map-frequency-rail.band-mid{background:var(--yellow)}#balls .map-frequency-rail.band-upper{background:var(--orange)}#balls .map-frequency-rail.band-over{background:var(--green)}
+    #balls>.ball{position:relative;z-index:1}
     #balls .map-signal-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-signal-dot.low{background:var(--red)}#balls .map-signal-dot.neutral{background:var(--yellow)}#balls .map-signal-dot.high{background:var(--green)}
     .ball .frequency-stamp{position:absolute;z-index:3;top:-4px;right:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:11px;padding:2px 1px;border-radius:6px;border:1px solid rgba(148,235,187,.55);background:rgba(9,45,48,.94);pointer-events:none}
     .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
