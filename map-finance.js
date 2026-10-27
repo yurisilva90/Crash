@@ -242,7 +242,7 @@
       Array.from({ length: cfg.maxCycle + 1 }, () => ({ wins: 0, directWins: 0, recoveryWins: 0, losses: 0 })));
     const heat = Array(cfg.rounds).fill(0);
     const outcomes = events.flatMap(event => event.completed || []);
-    let profit = 0, equity = 0, peak = 0, maxDD = 0, estimated = 0;
+    let profit = 0, equity = 0, peak = 0, minimumEquity = 0, maxDD = 0, estimated = 0;
     let directWins = 0, recoveryWins = 0;
     let lossRun = 0;
     let cycleLosses = 0;
@@ -279,6 +279,7 @@
       for (const delta of outcome.deltas) {
         equity += delta;
         peak = Math.max(peak, equity);
+        minimumEquity = Math.min(minimumEquity, equity);
         maxDD = Math.max(maxDD, peak - equity);
       }
     }
@@ -289,7 +290,7 @@
     const heatWins = heat.reduce((sum, item) => sum + item, 0);
     if (Math.abs(bucketProfit - profit) > 1e-6 || Math.abs(equity - profit) > 1e-6 || heatWins !== directWins)
       throw new Error('Inconsistência interna no resultado do mapa');
-    return { buckets, cells, heat, wins, directWins, recoveryWins, losses, cycleLosses, profit, maxDD, estimated,
+    return { buckets, cells, heat, wins, directWins, recoveryWins, losses, cycleLosses, profit, minimumEquity, peakEquity: peak, maxDD, estimated,
       averageLoss: lossRuns.length ? cycleLosses / lossRuns.length : 0,
       maxLoss: lossRuns.length ? Math.max(...lossRuns) : 0,
       outcomes };

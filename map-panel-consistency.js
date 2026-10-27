@@ -323,7 +323,10 @@
     target.innerHTML = card('Resultado', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.profit)}`, summary.profit >= 0 ? 'mult' : 'risk') +
       card('DD máximo', `${summary.estimated ? '≈' : ''}${simulationUnits(-summary.maxDD)}`, 'risk') +
       card('Loss médio', summary.cycleLosses ? summary.averageLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', 'risk') +
-      card('Loss máximo', summary.cycleLosses ? int(summary.maxLoss) : '—', 'risk');
+      card('Loss máximo', summary.cycleLosses ? int(summary.maxLoss) : '—', 'risk') +
+      card('Saldo mínimo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.minimumEquity)}`, 'risk') +
+      card('Pico de saldo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.peakEquity)}`, summary.peakEquity > 0 ? 'mult' : 'risk') +
+      card('Wins / recup.', `${int(summary.directWins)} / ${int(summary.recoveryWins)}`, summary.directWins ? 'mult' : 'risk');
   }
   function drawHeat(summary) {
     const target = document.querySelector('#heatRows');

@@ -41,6 +41,16 @@ test('20x/21R usa fator e custo próprios, não o de 30x', () => {
   near(result.profit, 19 - cycleCost(20, 21));
 });
 
+test('resumo registra o menor saldo e o pico da curva, além do drawdown', () => {
+  const configuration = cfg(30, 3);
+  const result = summarise(project(rows(6, [1, 5, 6]), configuration, 0).events, configuration);
+  const loss = cycleCost(30, 3);
+  // A tentativa de C0 da campanha seguinte é debitada antes do crédito do win.
+  near(result.minimumEquity, -loss - 1);
+  near(result.peakEquity, 29 - loss);
+  near(result.maxDD, loss + 1);
+});
+
 test('C1 R recupera a perda de C0; C1 L recupera e lucra uma unidade de payout', () => {
   for (const [mode, expected] of [['recover', 0], ['profit', 29]]) {
     const configuration = cfg(30, 3, 2, 0, mode);
