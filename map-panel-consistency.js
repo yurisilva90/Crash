@@ -320,14 +320,15 @@
     const target = document.querySelector('#mapMetrics');
     if (!target) return;
     const card = (label, value, className) => `<article class="card"><div class="label">${label}</div><div class="value ${className}">${value}</div></article>`;
+    const metric = value => simulationUnits(value).replace(/\s*u$/i, '');
     const loss = summary.cycleLosses
       ? `${int(summary.maxLoss)} (${summary.averageLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
       : '—';
-    target.innerHTML = card('Resultado', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.profit)}`, summary.profit >= 0 ? 'mult' : 'risk') +
-      card('DD máximo', `${summary.estimated ? '≈' : ''}${simulationUnits(-summary.maxDD)}`, 'risk') +
+    target.innerHTML = card('Resultado', `${summary.estimated ? '≈' : ''}${metric(summary.profit)}`, summary.profit >= 0 ? 'mult' : 'risk') +
+      card('DD máximo', `${summary.estimated ? '≈' : ''}${metric(-summary.maxDD)}`, 'risk') +
       card('Loss máximo', loss, 'risk') +
-      card('Saldo mínimo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.minimumEquity)}`, 'risk') +
-      card('Pico de saldo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.peakEquity)}`, summary.peakEquity > 0 ? 'mult' : 'risk') +
+      card('Saldo mínimo', `${summary.estimated ? '≈' : ''}${metric(summary.minimumEquity)}`, 'risk') +
+      card('Pico de saldo', `${summary.estimated ? '≈' : ''}${metric(summary.peakEquity)}`, summary.peakEquity > 0 ? 'mult' : 'risk') +
       card('Wins / recup.', `${int(summary.directWins)} / ${int(summary.recoveryWins)}`, summary.directWins ? 'mult' : 'risk');
   }
   function drawHeat(summary) {
