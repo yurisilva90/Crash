@@ -118,7 +118,7 @@
   }
 
   function trendStamp(event, records) {
-    if (activeStrategy === '2x' || ballIndicatorMode === 'zone') return '';
+    if (activeStrategy === '2x') return '';
     const trend = records[event.anchorRoundId];
     if (!trend?.level) return '';
     const direction = trend.level > 0 ? 'up' : 'down';
@@ -181,18 +181,18 @@
     const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
     const visible = (mapColumnState.layout === 'grouped' && filtering
       ? selected.filter(matching) : selected).slice(-1000).reverse();
-    const zones = ballIndicatorMode === 'zone' ? zoneRecords(config().payout) : null;
+    const zones = zoneRecords(config().payout);
     target.classList.remove('compact-2x');
     target.innerHTML = visible.map(event => {
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
       const zone = zones?.[event.anchorRoundId];
-      const zoneClass = zone ? ` zone-${zone}` : '';
+      const zoneDot = zone ? `<i class="map-zone-dot ${zone}" aria-hidden="true"></i>` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
-      return `<span class="ball ${event.color}${zoneClass}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}</span>`;
+      return `<span class="ball ${event.color}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends, filteredSummary) {
@@ -361,18 +361,16 @@
     if (activeStrategy === '2x') return;
     const target = document.querySelector('#recentBalls');
     if (!target) return;
-    const zones = ballIndicatorMode === 'zone' ? zoneRecords(config().payout) : null;
+    const zones = zoneRecords(config().payout);
     target.innerHTML = events.slice(-10).reverse().map(event => {
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
-      const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
-      const signalOutline = showBallSignals && ballIndicatorMode !== 'zone' ? ` signal-${signal} signal-enabled` : '';
       const zone = zones?.[event.anchorRoundId];
-      const zoneClass = zone ? ` zone-${zone}` : '';
+      const zoneDot = zone ? `<i class="map-zone-dot ${zone}" aria-hidden="true"></i>` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
-      return `<span class="ball ${event.color}${signalOutline}${zoneClass}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}</span>`;
+      return `<span class="ball ${event.color}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
     }).join('');
   }
 
@@ -510,8 +508,7 @@
     #mapView #balls{margin:5px -14px 8px;width:calc(100% + 28px);padding:12px 14px 9px;background:#050b14;border:0;border-radius:0;gap:8px;overflow:visible}
     #balls .ball,#recentBalls .ball{overflow:visible}
     #balls>.ball{position:relative;z-index:1}
-    #balls .ball.zone-under,#recentBalls .ball.zone-under{box-shadow:0 0 0 2px var(--bg),0 0 0 4px #e78c99!important}#balls .ball.zone-mid,#recentBalls .ball.zone-mid{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--yellow)!important}#balls .ball.zone-upper,#recentBalls .ball.zone-upper{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--orange)!important}#balls .ball.zone-over,#recentBalls .ball.zone-over{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--green)!important}
-    #balls .map-signal-dot,#recentBalls .map-signal-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-signal-dot.low,#recentBalls .map-signal-dot.low{background:var(--red)}#balls .map-signal-dot.neutral,#recentBalls .map-signal-dot.neutral{background:var(--yellow)}#balls .map-signal-dot.high,#recentBalls .map-signal-dot.high{background:var(--green)}
+    #balls .map-zone-dot,#recentBalls .map-zone-dot{position:absolute;z-index:4;right:-2px;bottom:-2px;width:8px;height:8px;border:1px solid var(--bg);border-radius:50%;pointer-events:none}#balls .map-zone-dot.under,#recentBalls .map-zone-dot.under{background:#e78c99}#balls .map-zone-dot.mid,#recentBalls .map-zone-dot.mid{background:var(--yellow)}#balls .map-zone-dot.upper,#recentBalls .map-zone-dot.upper{background:var(--orange)}#balls .map-zone-dot.over,#recentBalls .map-zone-dot.over{background:var(--green)}
     .ball .frequency-stamp{position:absolute;z-index:3;top:-4px;right:-4px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:11px;padding:2px 1px;border-radius:6px;border:1px solid rgba(148,235,187,.55);background:rgba(9,45,48,.94);pointer-events:none}
     .ball .frequency-stamp i{display:block;width:6px;height:4px;background:#80edaa;clip-path:polygon(0 66%,50% 0,100% 66%,100% 100%,50% 34%,0 100%)}
     .ball .frequency-stamp i+i{margin-top:-1px}
