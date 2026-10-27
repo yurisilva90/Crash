@@ -72,10 +72,10 @@
     for (const source of sources) {
       for (const row of source || []) combined.set(Number(row.round_id), row);
     }
-    const source = [...combined.values()].filter(row => {
+    const source = (globalThis.scopePanelRows || (value => value))([...combined.values()].filter(row => {
       const id = Number(row.round_id);
       return id >= 9000000 && id <= 9999999;
-    });
+    }));
     const value = frequency.trendAtAnchors(source, payout, gap, 500, 500).byRoundId;
     trendCache = { key, snapshot, value };
     return value;
@@ -88,10 +88,10 @@
     const sources = [historicalRows, mapRows, rows];
     const key = [...sources.map(source => `${source?.length || 0}:${source?.[0]?.round_id || ''}:${source?.at(-1)?.round_id || ''}`), target].join('|');
     if (zoneCache?.key === key && zoneCache.snapshot === snapshot) return zoneCache.value;
-    const ordered = [...new Map(sources.flat().filter(row => Number.isFinite(Number(row?.round_id)))
+    const ordered = (globalThis.scopePanelRows || (value => value))([...new Map(sources.flat().filter(row => Number.isFinite(Number(row?.round_id)))
       .map(row => [Number(row.round_id), row])).values()]
       .filter(row => Number(row.round_id) >= 9000000 && Number(row.round_id) <= 9999999)
-      .sort((a, b) => Number(a.round_id) - Number(b.round_id));
+      .sort((a, b) => Number(a.round_id) - Number(b.round_id)));
     const scale = 20 / target;
     const limits = [80 * scale, 90 * scale, 100 * scale];
     const byRoundId = {};
