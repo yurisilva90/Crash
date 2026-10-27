@@ -602,5 +602,44 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   save();
 })();
 </script>
+<style>
+  /* O placar dos ciclos do Mapa fica compacto até o usuário pedir o detalhe. */
+  #signalScore.cycle-table-collapsed>table{display:none!important}
+  #signalScore .cycle-table-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;margin:0 0 6px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#0b1929;color:var(--text);font:inherit;font-size:.78rem;font-weight:750;cursor:pointer}
+  #signalScore .cycle-table-toggle span:last-child{display:grid;place-items:center;width:20px;height:20px;border:1px solid var(--line);border-radius:50%;color:var(--muted);font-size:1rem;line-height:1;transition:transform .16s ease}
+  #signalScore:not(.cycle-table-collapsed) .cycle-table-toggle span:last-child{transform:rotate(180deg)}
+  html[data-theme="light"] #signalScore .cycle-table-toggle{background:#f8fafc}
+</style>
+<script>
+/* Recolhe somente a tabela de ciclos do Mapa; as demais tabelas e controles continuam visíveis. */
+(()=>{
+  const storageKey='crash-map-cycle-table-open-v1';
+  const apply=()=>{
+    const target=document.querySelector('#signalScore');
+    const table=target?.querySelector(':scope > table');
+    if(!target||!table||target.querySelector(':scope > .cycle-table-toggle'))return;
+    const open=localStorage.getItem(storageKey)==='true';
+    target.classList.toggle('cycle-table-collapsed',!open);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='cycle-table-toggle';
+    button.setAttribute('aria-expanded',String(open));
+    button.setAttribute('aria-label',open?'Recolher tabela de ciclos':'Abrir tabela de ciclos');
+    button.innerHTML='<span>Tabela de ciclos</span><span aria-hidden="true">⌄</span>';
+    button.addEventListener('click',()=>{
+      const expanded=target.classList.contains('cycle-table-collapsed');
+      target.classList.toggle('cycle-table-collapsed',!expanded);
+      button.setAttribute('aria-expanded',String(expanded));
+      button.setAttribute('aria-label',expanded?'Recolher tabela de ciclos':'Abrir tabela de ciclos');
+      localStorage.setItem(storageKey,String(expanded));
+    });
+    target.insertBefore(button,table);
+  };
+  const priorRender=render;
+  render=()=>{priorRender();apply()};
+  new MutationObserver(apply).observe(document.body,{subtree:true,childList:true});
+  apply();
+})();
+</script>
 <script src="dashboard-notifications.js"></script></body></html>
 
