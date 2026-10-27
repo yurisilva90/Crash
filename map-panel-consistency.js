@@ -320,10 +320,12 @@
     const target = document.querySelector('#mapMetrics');
     if (!target) return;
     const card = (label, value, className) => `<article class="card"><div class="label">${label}</div><div class="value ${className}">${value}</div></article>`;
+    const loss = summary.cycleLosses
+      ? `${int(summary.maxLoss)} (${summary.averageLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+      : '—';
     target.innerHTML = card('Resultado', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.profit)}`, summary.profit >= 0 ? 'mult' : 'risk') +
       card('DD máximo', `${summary.estimated ? '≈' : ''}${simulationUnits(-summary.maxDD)}`, 'risk') +
-      card('Loss médio', summary.cycleLosses ? summary.averageLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—', 'risk') +
-      card('Loss máximo', summary.cycleLosses ? int(summary.maxLoss) : '—', 'risk') +
+      card('Loss máximo', loss, 'risk') +
       card('Saldo mínimo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.minimumEquity)}`, 'risk') +
       card('Pico de saldo', `${summary.estimated ? '≈' : ''}${simulationUnits(summary.peakEquity)}`, summary.peakEquity > 0 ? 'mult' : 'risk') +
       card('Wins / recup.', `${int(summary.directWins)} / ${int(summary.recoveryWins)}`, summary.directWins ? 'mult' : 'risk');
@@ -554,6 +556,7 @@
     #signalScore .map-dim{opacity:.22;filter:saturate(.3)}#signalScore .map-active{opacity:1;filter:none}#signalScore tr.map-dim>th,#signalScore tr.map-dim>td{opacity:.22;filter:saturate(.3)}#signalScore .map-total-filter{border:0;background:transparent;color:var(--text);font:700 .72rem/1 inherit;cursor:pointer}
     #signalScore .map-cycle-section th{padding:5px 2px 3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--muted);font-size:.65rem;letter-spacing:.08em;text-align:left;text-transform:uppercase}#signalScore .map-cycle-row>th{color:var(--text);cursor:default}#signalScore .map-level-cycle-head{width:48px;padding:3px 2px!important;white-space:nowrap;text-align:left}#signalScore .map-level-cycle-head span{display:inline-block;width:20px;color:var(--yellow);font-size:.66rem;letter-spacing:.04em}#signalScore .map-level-cycle-head b{margin-left:1px;color:var(--text);font:700 .72rem/1 inherit}#signalScore .map-cycle-row>td{padding:2px 0!important}#signalScore .map-cycle-values{display:grid;grid-template-columns:repeat(var(--cycle-columns),minmax(0,1fr));gap:2px;min-width:0}#signalScore .map-cycle-value{display:grid;min-width:0;padding:1px 0;text-align:center;color:var(--text)}#signalScore .map-cycle-value strong{font-size:.69rem;white-space:nowrap}#signalScore .map-cycle-value small{font-size:.6rem;color:var(--muted)}#signalScore .map-cycle-value.map-cycle-total{border-left:1px solid var(--line);font-weight:700}#signalScore .map-loss-row th{color:var(--red)}
     #balls .ball.map-filter-muted{opacity:.1;filter:grayscale(1) brightness(.48)}#signalScore .map-filter-muted{opacity:.22;filter:grayscale(.7) saturate(.35)}#signalScore .map-filter-gap{display:block;min-width:0;min-height:0;aspect-ratio:1;pointer-events:none}#signalScore table th,#signalScore table td{padding:2px 2px}#signalScore td[data-map-column]{cursor:pointer}
+    #mapMetrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}#mapMetrics .card{padding:8px 7px!important}#mapMetrics .value{font-size:1.08rem!important}
     @media(max-width:720px){#signalScore .map-score-controls{top:0}#signalScore .map-score-tabs button{padding:5px 6px;font-size:.7rem}#signalScore .map-period-control{font-size:.7rem}#signalScore .map-period-select{min-width:55px;font-size:.74rem}}
     `;
   document.head.append(style);
