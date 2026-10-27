@@ -187,12 +187,13 @@
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
+      const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
       const zone = zones?.[event.anchorRoundId];
       const zoneDot = zone ? `<i class="map-zone-dot ${zone}" aria-hidden="true"></i>` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
-      return `<span class="ball ${event.color}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
+      return `<span class="ball ${event.color} signal-${signal}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
   }
   function drawScore(selected, cfg, trends, filteredSummary) {
@@ -366,11 +367,12 @@
       const row = event.row || {};
       const amount = row.total_amount_display || (row.total_amount_brl != null
         ? `R$ ${Number(row.total_amount_brl).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '');
+      const signal = event.signal === 'green' ? 'green-win' : (event.signal === 'unknown' ? 'red' : event.signal);
       const zone = zones?.[event.anchorRoundId];
       const zoneDot = zone ? `<i class="map-zone-dot ${zone}" aria-hidden="true"></i>` : '';
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
-      return `<span class="ball ${event.color}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
+      return `<span class="ball ${event.color} signal-${signal}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
     }).join('');
   }
 
