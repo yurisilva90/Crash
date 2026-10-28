@@ -652,5 +652,12 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   apply();
 })();
 </script>
+<style>
+  #mapRangeInfo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;margin:2px 0 5px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:#081625;color:var(--muted);font-size:.66rem;line-height:1.2}
+  #mapRangeInfo span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #mapRangeInfo button{flex:0 0 auto;border:1px solid var(--line);border-radius:6px;background:#102238;color:var(--text);padding:3px 6px;font:700 .65rem inherit;cursor:pointer}
+  #balls.map-range-dragging{touch-action:none;user-select:none}
+  #balls .ball.map-range-preview{box-shadow:0 0 0 2px var(--blue),0 0 14px rgba(110,169,255,.6);transform:translateY(-1px)}
+</style>
 <script src="dashboard-notifications.js"></script></body></html>
 

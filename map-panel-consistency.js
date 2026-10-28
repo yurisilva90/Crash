@@ -22,6 +22,7 @@
     expanded: localStorage.getItem('crash-map-columns-v1') === 'expanded',
     layout: localStorage.getItem('crash-map-column-layout-v1') || 'highlight'
   };
+  let mapRange = null;
   const mapPeriodOptions = [
     ['20', '20'], ['50', '50'], ['100', '100'], ['500', '500'],
     ['1000', '1.000'], ['5000', '5.000'], ['all', 'Total']
@@ -131,6 +132,79 @@
   function windowSize() {
     return window.mapPanelWindow === Infinity ? Infinity : Math.max(1, Number(window.mapPanelWindow) || 50);
   }
+  function eventsInRange(events) {
+    if (!mapRange) return events;
+    return events.filter(event => Number(event.anchorRoundId) >= mapRange.start && Number(event.anchorRoundId) <= mapRange.end);
+  }
+  function rangeDate(value) {
+    const date = new Date(value || 0);
+    return Number.isNaN(date.getTime()) ? 'sem horário' : date.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+  }
+  function updateRangeInfo(target, start, end, selecting = false) {
+    let info = document.querySelector('#mapRangeInfo');
+    if (!info) {
+      info = document.createElement('div');
+      info.id = 'mapRangeInfo';
+      target.before(info);
+    }
+    if (!start || !end) {
+      info.innerHTML = '<span>Segure e arraste sobre os ciclos para recortar.</span>';
+      return;
+    }
+    const low = Number(start.dataset.anchorId) <= Number(end.dataset.anchorId) ? start : end;
+    const high = low === start ? end : start;
+    const prefix = selecting ? 'Selecionando' : 'Recorte';
+    info.innerHTML = `<span>${prefix}: ${low.dataset.anchorId} · ${rangeDate(low.dataset.anchorTime)} — ${high.dataset.anchorId} · ${rangeDate(high.dataset.anchorTime)}</span>${selecting ? '' : '<button type="button" data-map-range-clear>Limpar</button>'}`;
+    info.querySelector('[data-map-range-clear]')?.addEventListener('click', () => { mapRange = null; draw(); });
+  }
+  function installRangeSelector(target) {
+    if (target.dataset.rangeSelector === 'ready') return;
+    target.dataset.rangeSelector = 'ready';
+    let start = null, current = null, timer = null, selecting = false;
+    const ballAt = event => event.target.closest('.ball[data-anchor-id]');
+    const preview = () => {
+      target.querySelectorAll('.map-range-preview').forEach(ball => ball.classList.remove('map-range-preview'));
+      if (!start || !current) return;
+      const low = Math.min(Number(start.dataset.anchorId), Number(current.dataset.anchorId));
+      const high = Math.max(Number(start.dataset.anchorId), Number(current.dataset.anchorId));
+      target.querySelectorAll('.ball[data-anchor-id]').forEach(ball => {
+        const id = Number(ball.dataset.anchorId);
+        ball.classList.toggle('map-range-preview', id >= low && id <= high);
+      });
+      updateRangeInfo(target, start, current, true);
+    };
+    target.addEventListener('pointerdown', event => {
+      const ball = ballAt(event);
+      if (!ball) return;
+      start = current = ball;
+      timer = window.setTimeout(() => {
+        selecting = true;
+        target.classList.add('map-range-dragging');
+        target.setPointerCapture?.(event.pointerId);
+        preview();
+      }, 280);
+    });
+    target.addEventListener('pointermove', event => {
+      if (!selecting) return;
+      const next = document.elementFromPoint(event.clientX, event.clientY)?.closest('.ball[data-anchor-id]');
+      if (next && target.contains(next)) { current = next; preview(); }
+    });
+    const finish = event => {
+      window.clearTimeout(timer);
+      if (!selecting) { start = current = null; return; }
+      event.preventDefault();
+      const low = Math.min(Number(start.dataset.anchorId), Number(current.dataset.anchorId));
+      const high = Math.max(Number(start.dataset.anchorId), Number(current.dataset.anchorId));
+      mapRange = { start: low, end: high };
+      selecting = false;
+      target.classList.remove('map-range-dragging');
+      draw();
+    };
+    target.addEventListener('pointerup', finish);
+    target.addEventListener('pointercancel', finish);
+  }
   function sourceRows() {
     const size = windowSize();
     const source = size === Infinity
@@ -179,8 +253,9 @@
     hideRoundTooltip();
     const matching = event => selectedEvents([event], trends).length === 1;
     const filtering = Boolean(mapColumnState.selected.length || mapColumnState.rows.length);
+    const ranged = eventsInRange(selected);
     const visible = (mapColumnState.layout === 'grouped' && filtering
-      ? selected.filter(matching) : selected).slice(-1000).reverse();
+      ? ranged.filter(matching) : ranged).slice(-1000).reverse();
     const zones = zoneRecords(config().payout);
     target.classList.remove('compact-2x');
     target.innerHTML = visible.map(event => {
@@ -193,8 +268,12 @@
       const content = ballDisplay === 'payout' && !event.pending ? `${event.payoutLabel}x` : event.label;
       const muted = filtering && mapColumnState.layout === 'highlight' && !matching(event) ? ' map-filter-muted' : '';
       const state = event.partialWin ? ` · win parcial; falta ${event.remainingDebt.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} u.` : '';
-      return `<span class="ball ${event.color} signal-${signal}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
+      return `<span class="ball ${event.color} signal-${signal}${muted}" data-round-id="${event.roundId}" data-round-time="${event.capturedAt || ''}" data-round-amount="${amount ? encodeURIComponent(String(amount)) : ''}" data-anchor-id="${event.anchorRoundId}" data-anchor-time="${event.capturedAt || ''}" title="Rodada ${event.roundId}${state}">${content}${trendStamp(event, trends)}${zoneDot}</span>`;
     }).join('') || '<span class="map-filter-empty">Nenhum ciclo concluído neste recorte.</span>';
+    installRangeSelector(target);
+    const start = mapRange ? target.querySelector(`.ball[data-anchor-id="${mapRange.start}"]`) : null;
+    const end = mapRange ? target.querySelector(`.ball[data-anchor-id="${mapRange.end}"]`) : null;
+    updateRangeInfo(target, start, end);
   }
   function drawScore(selected, cfg, trends, filteredSummary) {
     const target = document.querySelector('#signalScore');
@@ -334,12 +413,13 @@
       const { selected, cfg, gap, all } = projection();
       const panel = panelProjection();
       const trends = activeStrategy === '2x' ? {} : trendRecords(cfg.payout, gap);
-      const filtered = selectedEvents(selected, trends);
+      const ranged = eventsInRange(selected);
+      const filtered = selectedEvents(ranged, trends);
       const summary = finance.summarise(filtered, cfg);
       drawBalls(selected, trends);
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
-      drawScore(selected, cfg, trends, summary);
+      drawScore(ranged, cfg, trends, summary);
       drawCycleTable(summary, cfg);
       drawMetrics(summary);
       drawHeat(summary);
