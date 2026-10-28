@@ -155,20 +155,15 @@ document.addEventListener('click',event=>{if(event.target.closest('#configNow'))
 setTimeout(()=>{document.querySelector('#filterNow')?.setAttribute('hidden','');document.querySelector('#refreshNow')?.setAttribute('hidden','')},0);
 const MAX_DISPLAY_RECOVERY_LEVEL=3;
 let globalFilter={rounds:'all',start:'',end:''};
-// Escopo apenas visual: o banco e o CSV continuam contendo todas as rodadas.
-// O painel começa depois do último gap maior que este limite; gaps menores
-// seguem visíveis para não ocultar trechos recentes que ainda são utilizáveis.
+// A lacuna nunca recorta a visualização. Ela permanece visível e o motor de
+// simulação, com seu limite de gaps, descarta apenas a campanha atravessada.
 const PANEL_HISTORY_MAX_GAP=50;
 function panelHistorySegment(source,maxGap=PANEL_HISTORY_MAX_GAP){
   const ordered=[...new Map((source||[])
     .filter(row=>Number.isFinite(Number(row?.round_id)))
     .map(row=>[Number(row.round_id),row])).values()]
     .sort((a,b)=>Number(a.round_id)-Number(b.round_id));
-  let start=0;
-  for(let index=1;index<ordered.length;index++){
-    if(Number(ordered[index].round_id)-Number(ordered[index-1].round_id)-1>maxGap)start=index;
-  }
-  return ordered.slice(start);
+  return ordered;
 }
 window.scopePanelRows=panelHistorySegment;
 function filteredRows(source=rows){let filtered=panelHistorySegment(source);if(globalFilter.start){const start=new Date(`${globalFilter.start}T00:00:00-03:00`).getTime();filtered=filtered.filter(row=>new Date(row.captured_at).getTime()>=start)}if(globalFilter.end){const end=new Date(`${globalFilter.end}T23:59:59.999-03:00`).getTime();filtered=filtered.filter(row=>new Date(row.captured_at).getTime()<=end)}if(globalFilter.rounds!=='all')filtered=filtered.slice(-Number(globalFilter.rounds));return filtered}
@@ -655,34 +650,6 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   render=()=>{priorRender();apply()};
   new MutationObserver(apply).observe(document.body,{subtree:true,childList:true});
   apply();
-})();
-</script>
-<script>
-/* Escopo de exibição: preserva os arrays brutos e entrega aos cards legados
-   somente o trecho posterior ao último gap acima de 50 rodadas. */
-(()=>{
-  const withPanelScope=work=>{
-    const original={rows,mapRows,historicalRows};
-    rows=panelHistorySegment(rows);
-    mapRows=panelHistorySegment(mapRows);
-    historicalRows=panelHistorySegment(historicalRows);
-    try{return work()}finally{rows=original.rows;mapRows=original.mapRows;historicalRows=original.historicalRows}
-  };
-  const priorRender=render;
-  render=()=>withPanelScope(()=>{
-    const result=priorRender();
-    const note=document.querySelector('#sourceNote');
-    if(note)note.textContent=`${note.textContent} · recorte visual: gaps até ${PANEL_HISTORY_MAX_GAP} rodadas`;
-    return result;
-  });
-  const priorMapRender=renderMapBalls;
-  renderMapBalls=()=>withPanelScope(()=>{
-    const result=priorMapRender();
-    const note=document.querySelector('#mapPageNote');
-    if(note)note.textContent=`${note.textContent} · recorte: gaps até ${PANEL_HISTORY_MAX_GAP}`;
-    return result;
-  });
-  if(snapshot)render();
 })();
 </script>
 <script src="dashboard-notifications.js"></script></body></html>
