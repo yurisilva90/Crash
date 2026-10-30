@@ -704,5 +704,17 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   button.onclick=()=>window.setView('report');document.querySelectorAll('[data-view="map"]').forEach(b=>b.addEventListener('click',()=>requestAnimationFrame(renderMapMatrix)));window.addEventListener('resize',()=>{if(!report.hidden)requestAnimationFrame(renderReport)});window.addEventListener('load',()=>{if(!document.querySelector('#mapView')?.hidden)renderMapMatrix()});
 })();
 </script>
+<script>
+/* O sinal ALTA/NEUTRA/BAIXA foi aposentado: não participa de entradas nem da
+   leitura das bolinhas. Remove os cartões e impede que ele pinte o seletor. */
+(()=>{
+  document.querySelector('#trendSignals')?.remove();
+  const clearStrategyTone=()=>document.querySelectorAll('[data-strategy],.strategy-picker-summary').forEach(node=>node.classList.remove('strategy-green','strategy-yellow','strategy-orange','strategy-red'));
+  renderTrendSignals=()=>{};
+  renderStrategySignals=clearStrategyTone;
+  clearStrategyTone();
+  render();
+})();
+</script>
 <script src="dashboard-notifications.js"></script></body></html>
 
