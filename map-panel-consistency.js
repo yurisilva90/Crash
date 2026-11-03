@@ -19,7 +19,7 @@
     dimension: ['frequency', 'payout'].includes(savedMapDimension) ? savedMapDimension : 'frequency',
     selected: [],
     rows: [],
-    expanded: localStorage.getItem('crash-map-columns-v1') === 'expanded',
+    expanded: true,
     layout: localStorage.getItem('crash-map-column-layout-v1') || 'highlight'
   };
   let mapRange = null;
@@ -289,7 +289,7 @@
     ];
     const columns = mapColumnState.dimension === 'frequency' ? frequencyColumns
       : payoutColumns;
-    const shownColumns = mapColumnState.expanded ? columns : [];
+    const shownColumns = columns;
     const groups = Object.fromEntries(columns.map(([key]) => [key, []]));
     for (const event of selected) groups[bucketFor(event, trends)]?.push(event);
     const summaries = Object.fromEntries(columns.map(([key]) => [key, finance.summarise(groups[key], cfg)]));
@@ -316,28 +316,12 @@
       const number = field === 'directWins' ? summary.directWins : summary[field];
       return `<td><strong class="${showProfit ? tone(summary.profit) : ''}">${int(number)}</strong><small>${pct(number, total)}</small>${showProfit ? `<small class="score-profit ${tone(summary.profit)}">${summary.estimated ? '≈' : ''}${units(summary.profit)}</small>` : ''}</td>`;
     };
-    // A seleção das colunas serve para o placar Win/Loss e para o Total.
-    // A grade de ciclos, porém, é referência de profundidade: ela nunca deve
-    // desaparecer, nem escurecer, quando o usuário está comparando colunas.
-    const cycleSummary = finance.summarise(selected.filter(event =>
-      !mapColumnState.selected.length || mapColumnState.selected.includes(bucketFor(event, trends))
-    ), cfg);
-    const cycleCell = (item, level, cycle, extraClass = '') => {
-      const result = item.cells[level]?.[cycle] || { directWins: 0, recoveryWins: 0, losses: 0 };
-      const total = result.directWins + result.recoveryWins + result.losses;
-      return `<span class="map-cycle-value ${extraClass}"><strong>${int(result.directWins)}W · ${int(result.recoveryWins)}R · ${int(result.losses)}L</strong><small>${pct(result.directWins, total)} diretos</small></span>`;
-    };
-    const cycleRows = cycleSummary.cells.map((_, level) => Array.from({ length: cfg.recoveries }, (_, cycle) => {
-      const levelLabel = cycle === 0 ? `<span>N${level}</span>` : '<span aria-hidden="true"></span>';
-      return `<tr class="map-cycle-row"><th class="map-level-cycle-head">${levelLabel}<b>C${cycle}</b></th><td colspan="${shownColumns.length + 1}"><div class="map-cycle-values" style="--cycle-columns:${columns.length + 1}">${columns.map(([key]) => cycleCell(summaries[key], level, cycle)).join('')}${cycleCell(cycleSummary, level, cycle, 'map-cycle-total')}</div></td></tr>`;
-    }).join('')).join('');
     const layoutTitle = mapColumnState.layout === 'grouped' ? 'Agrupar somente as bolinhas selecionadas' : 'Manter a sequência e apenas realçar as bolinhas selecionadas';
     const activePeriod = windowSize() === Infinity ? 'all' : String(windowSize());
     const periodOptions = mapPeriodOptions.map(([value, label]) => `<option value="${value}" ${value === activePeriod ? 'selected' : ''}>${label}</option>`).join('');
-    const detailTitle = mapColumnState.expanded ? 'Recolher colunas detalhadas' : 'Mostrar colunas detalhadas';
     const detailControls = `<button type="button" class="map-selection-layout ${mapColumnState.layout}" aria-label="${layoutTitle}" title="${layoutTitle}"><span></span><span></span><span></span></button><div class="map-score-tabs" role="tablist" aria-label="Parâmetro das colunas"><button type="button" data-map-dimension="frequency" role="tab" aria-selected="${mapColumnState.dimension === 'frequency'}" title="Frequência">Freq</button><button type="button" data-map-dimension="payout" role="tab" aria-selected="${mapColumnState.dimension === 'payout'}" title="Payout">Pay</button></div>`;
     const columnCount = shownColumns.length + 2;
-    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions"><button type="button" class="map-columns-toggle ${mapColumnState.expanded ? 'expanded' : ''}" aria-label="${detailTitle}" title="${detailTitle}"><span></span><span></span><span></span></button>${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Resultado</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar somente wins diretos">Win direto</th>${shownColumns.map(([key]) => cell(key, 'directWins', true)).join('')}${overall('directWins', true)}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr><tr class="map-cycle-section"><th colspan="${columnCount}">Ciclos · W direto · R recuperação · L loss</th></tr>${cycleRows}</tbody></table>`;
+    target.innerHTML = `<div class="map-score-controls"><label class="map-period-control"><span>Período:</span><select class="map-period-select" aria-label="Período do mapa" title="Período do mapa">${periodOptions}</select></label><div class="map-score-actions">${detailControls}</div></div><table><thead><tr><th class="map-row-head" data-map-row="" title="Limpar filtro">Resultado</th>${shownColumns.map(([key, label, direction, steps]) => `<th class="map-column-head${columnClass(key)}" data-map-column="${key}" aria-pressed="${mapColumnState.selected.includes(key)}" aria-label="${label}" title="${label}">${marker([key, label, direction, steps])}</th>`).join('')}<th><button type="button" class="map-total-filter ${!mapColumnState.selected.length && !mapColumnState.rows.length ? 'selected' : ''}" data-map-column="" aria-label="Mostrar todos" title="Mostrar todos">Total</button></th></tr></thead><tbody><tr class="score-win-row${rowClass('wins')}"><th class="map-row-head" data-map-row="wins" aria-pressed="${mapColumnState.rows.includes('wins')}" title="Filtrar somente wins diretos">Win direto</th>${shownColumns.map(([key]) => cell(key, 'directWins', true)).join('')}${overall('directWins', true)}</tr><tr class="map-loss-row${rowClass('losses')}"><th class="map-row-head" data-map-row="losses" aria-pressed="${mapColumnState.rows.includes('losses')}" title="Filtrar losses">Loss</th>${shownColumns.map(([key]) => cell(key, 'losses')).join('')}${overall('losses')}</tr></tbody></table>`;
     target.querySelectorAll('[data-map-column]').forEach(button => button.addEventListener('click', () => {
       const key = button.dataset.mapColumn || null;
       mapColumnState.selected = key === null ? [] : (mapColumnState.selected.includes(key) ? mapColumnState.selected.filter(item => item !== key) : [...mapColumnState.selected, key]);
@@ -356,12 +340,6 @@
       localStorage.setItem('crash-map-column-dimension-v1', mapColumnState.dimension);
       draw();
     }));
-    target.querySelector('.map-columns-toggle')?.addEventListener('click', () => {
-      mapColumnState.expanded = !mapColumnState.expanded;
-      if (!mapColumnState.expanded) mapColumnState.selected = [];
-      localStorage.setItem('crash-map-columns-v1', mapColumnState.expanded ? 'expanded' : 'collapsed');
-      draw();
-    });
     target.querySelector('.map-selection-layout')?.addEventListener('click', () => {
       mapColumnState.layout = mapColumnState.layout === 'grouped' ? 'highlight' : 'grouped';
       localStorage.setItem('crash-map-column-layout-v1', mapColumnState.layout);
@@ -420,7 +398,6 @@
       drawRecent(panel.all.events, trends);
       drawPanelCards(panel.all, panel.source, panel.cfg);
       drawScore(ranged, cfg, trends, summary);
-      drawCycleTable(summary, cfg);
       drawMetrics(summary);
       drawHeat(summary);
       const active = windowSize() === Infinity ? 'all' : String(windowSize());
