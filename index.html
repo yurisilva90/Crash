@@ -669,7 +669,7 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   const units=value=>`${value>0?'+':''}${Number(value||0).toLocaleString('pt-BR',{maximumFractionDigits:0})}`;
   const source=()=>{const context=window.getMapMatrixContext?.();return context?.source||[]};
   const modes=[['recover','recover'],['recover','profit'],['profit','recover'],['profit','profit']];
-  let mapCycle=Number(localStorage.getItem('crash-map-efficiency-cycle-v1'))||1,mapCache='',mapCells=[];
+  let mapCycle=Number(localStorage.getItem('crash-map-efficiency-cycle-v1')??0),mapCache='',mapCells=[];
   let reportCache='',reportCells=[];
   const reportSource=()=>{const base=typeof filteredRows==='function'?filteredRows(count>=500&&mapRows.length?mapRows:rows):rows;const wanted=count===Infinity?5000:Math.max(500,Number(count)||500);return base.slice(-Math.min(wanted,5000))};
   const compare=(payout,rounds)=>{
@@ -712,8 +712,8 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
     const grid=['<span class="compare-axis">N</span>',...['21R','31R','41R','61R'].map(x=>`<span class="compare-axis">${x}</span>`)];
     for(let level=0;level<=6;level++){grid.push(`<span class="compare-axis">N${level}</span>`);for(const rounds of [21,31,41,61])grid.push(cellMarkup(cellsByRound.get(rounds)?.get(level)))}
     const context=window.getMapMatrixContext?.(),period=window.mapPanelWindow===Infinity?'Total':`${Number(window.mapPanelWindow)||50} sequências`;
-    target.innerHTML=`<div class="compare-head"><div><strong>Resultado líquido · N × R</strong><small>${payout.toLocaleString('pt-BR')}x · C${mapCycle} · ${period} do mapa</small></div><select class="compare-select" id="mapEfficiencyCycle" aria-label="Ciclo máximo">${[1,2,3].map(c=>`<option value="${c}" ${c===mapCycle?'selected':''}>C${c}</option>`).join('')}</select></div><div class="compare-grid">${grid.join('')}</div><div class="compare-note">Cada célula testa quatro combinações de modo (R/R, R/L, L/R, L/L) e exibe automaticamente a de melhor eficiência E. Payout e período seguem o cabeçalho e a janela das bolinhas. Líquido = ganhos menos perdas · mín. = menor saldo desde 0 · DD = maior recuo do pico · E = líquido ÷ DD. Amostra-base: ${(context?.source?.length||0).toLocaleString('pt-BR')} rodadas.</div>`;
-    target.querySelector('select').onchange=e=>{mapCycle=Number(e.target.value)||1;localStorage.setItem('crash-map-efficiency-cycle-v1',mapCycle);mapCache='';renderMapMatrix()};
+    target.innerHTML=`<div class="compare-head"><div><strong>Resultado líquido · N × R</strong><small>${payout.toLocaleString('pt-BR')}x · C${mapCycle} · ${period} do mapa</small></div><select class="compare-select" id="mapEfficiencyCycle" aria-label="Ciclo máximo">${[0,1,2,3].map(c=>`<option value="${c}" ${c===mapCycle?'selected':''}>C${c}</option>`).join('')}</select></div><div class="compare-grid">${grid.join('')}</div><div class="compare-note">Cada célula testa quatro combinações de modo (R/R, R/L, L/R, L/L) e exibe automaticamente a de melhor eficiência E. Payout e período seguem o cabeçalho e a janela das bolinhas. Líquido = ganhos menos perdas · mín. = menor saldo desde 0 · DD = maior recuo do pico · E = líquido ÷ DD. Amostra-base: ${(context?.source?.length||0).toLocaleString('pt-BR')} rodadas.</div>`;
+    target.querySelector('select').onchange=e=>{mapCycle=Number(e.target.value);localStorage.setItem('crash-map-efficiency-cycle-v1',mapCycle);mapCache='';renderMapMatrix()};
   };
   window.renderMapEfficiencyMatrix=renderMapMatrix;
   const makeCurve=cell=>{let equity=0,points=[0];for(const o of cell.outcomes||[])for(const delta of o.deltas||[]){equity+=delta;points.push(equity)}return points};
