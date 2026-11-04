@@ -686,23 +686,22 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   const compareMap=(payout,rounds)=>{
     const context=window.getMapMatrixContext?.();if(!context)return [];
     const data=context.source||[],windowCount=context.windowCount||0,active=config(),gap=typeof simulationGapLimit==='function'?simulationGapLimit():20;
-    const key=[payout,rounds,mapCycle,windowCount,data.length,context.firstId,context.lastId,active.levelRecoveries,active.recoveryDivider,gap].join('|');
+    const cycleMode=active.cycleMode||'recover',levelMode=active.levelMode||'recover';
+    const key=[payout,rounds,mapCycle,windowCount,data.length,context.firstId,context.lastId,active.levelRecoveries,active.recoveryDivider,cycleMode,levelMode,gap].join('|');
     if(key===mapCache)return mapCells;
     const answer=[];
     for(let level=0;level<=6;level++){
-      const options=[];
-      for(const [cycleMode,levelMode] of modes){try{
+      try{
         const input={...active,payout,cycleRounds:rounds,recoveries:mapCycle+1,levels:level,levelRecoveries:Math.max(1,Number(active.levelRecoveries)||1),cycleMode,levelMode};
         const run=CrashMapFinance.project(data,input,gap),selected=windowCount===Infinity?run.events:windowCount>0?run.events.slice(-windowCount):[];
-        const summary=CrashMapFinance.summarise(selected,input),efficiency=summary.profit/(summary.maxDD||Math.max(1,Math.abs(summary.profit)));
-        options.push({cycle:mapCycle,level,cycleMode,levelMode,result:summary.profit,minimum:summary.minimumEquity,dd:summary.maxDD,efficiency,estimated:summary.estimated,outcomes:summary.outcomes});
-      }catch(error){console.warn('Comparação do mapa indisponível',error)}}
-      options.sort((a,b)=>b.efficiency-a.efficiency||a.dd-b.dd||b.result-a.result);
-      if(options[0])answer.push(options[0]);
+        const summary=CrashMapFinance.summarise(selected,input);
+        answer.push({cycle:mapCycle,level,result:summary.profit,minimum:summary.minimumEquity,dd:summary.maxDD,estimated:summary.estimated});
+      }catch(error){console.warn('Comparação do mapa indisponível',error)}
     }
     mapCache=key;mapCells=answer;return answer;
   };
   const cellMarkup=(cell)=>{if(!cell)return '<div class="compare-cell">—</div>';const tone=cell.result>=0?'positive':'negative',mode=`${cell.cycleMode==='profit'?'L':'R'}/${cell.levelMode==='profit'?'L':'R'}`;return `<div class="compare-cell ${tone}" title="Resultado líquido: ganhos menos perdas da configuração"><span class="compare-result ${tone}">${units(cell.result)}</span><span class="compare-min">mín. ${units(cell.minimum)}</span><span class="compare-dd">DD ${units(-cell.dd)}</span><span class="compare-mode">E ${cell.efficiency.toLocaleString('pt-BR',{maximumFractionDigits:2})} · ${mode}</span></div>`};
+  const mapCellMarkup=(cell)=>{if(!cell)return '<div class="compare-cell">—</div>';const tone=cell.result>=0?'positive':'negative';return `<div class="compare-cell ${tone}" title="Resultado líquido, menor saldo e drawdown da configuração atual"><span class="compare-result ${tone}">${units(cell.result)}</span><span class="compare-min">menor saldo ${units(cell.minimum)}</span><span class="compare-dd">DD ${units(-cell.dd)}</span></div>`};
   const renderMapMatrix=()=>{
     const map=document.querySelector('#mapView');if(!map||map.hidden)return;
     let target=document.querySelector('#mapEfficiency');if(!target){target=document.createElement('section');target.id='mapEfficiency';target.className='wide';}
@@ -710,9 +709,9 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
     const payout=Number(config().payout)||20,cellsByRound=new Map();
     for(const rounds of [21,31,41,61])cellsByRound.set(rounds,new Map(compareMap(payout,rounds).map(x=>[x.level,x])));
     const grid=['<span class="compare-axis">N</span>',...['21R','31R','41R','61R'].map(x=>`<span class="compare-axis">${x}</span>`)];
-    for(let level=0;level<=6;level++){grid.push(`<span class="compare-axis">N${level}</span>`);for(const rounds of [21,31,41,61])grid.push(cellMarkup(cellsByRound.get(rounds)?.get(level)))}
+    for(let level=0;level<=6;level++){grid.push(`<span class="compare-axis">N${level}</span>`);for(const rounds of [21,31,41,61])grid.push(mapCellMarkup(cellsByRound.get(rounds)?.get(level)))}
     const context=window.getMapMatrixContext?.(),period=window.mapPanelWindow===Infinity?'Total':`${Number(window.mapPanelWindow)||50} sequências`;
-    target.innerHTML=`<div class="compare-head"><div><strong>Resultado líquido · N × R</strong><small>${payout.toLocaleString('pt-BR')}x · C${mapCycle} · ${period} do mapa</small></div><select class="compare-select" id="mapEfficiencyCycle" aria-label="Ciclo máximo">${[0,1,2,3].map(c=>`<option value="${c}" ${c===mapCycle?'selected':''}>C${c}</option>`).join('')}</select></div><div class="compare-grid">${grid.join('')}</div><div class="compare-note">Cada célula testa quatro combinações de modo (R/R, R/L, L/R, L/L) e exibe automaticamente a de melhor eficiência E. Payout e período seguem o cabeçalho e a janela das bolinhas. Líquido = ganhos menos perdas · mín. = menor saldo desde 0 · DD = maior recuo do pico · E = líquido ÷ DD. Amostra-base: ${(context?.source?.length||0).toLocaleString('pt-BR')} rodadas.</div>`;
+    target.innerHTML=`<div class="compare-head"><div><strong>Resultado líquido · N × R</strong><small>${payout.toLocaleString('pt-BR')}x · C${mapCycle} · ${period} do mapa</small></div><select class="compare-select" id="mapEfficiencyCycle" aria-label="Ciclo máximo">${[0,1,2,3].map(c=>`<option value="${c}" ${c===mapCycle?'selected':''}>C${c}</option>`).join('')}</select></div><div class="compare-grid">${grid.join('')}</div><div class="compare-note">Valores calculados com os modos R/L atualmente configurados no painel, sem seleção automática da melhor combinação. Líquido = ganhos menos perdas · menor saldo = menor equity atingida · DD = maior queda em relação ao pico anterior. Payout e período seguem o cabeçalho e a janela das bolinhas. Amostra-base: ${(context?.source?.length||0).toLocaleString('pt-BR')} rodadas.</div>`;
     target.querySelector('select').onchange=e=>{mapCycle=Number(e.target.value);localStorage.setItem('crash-map-efficiency-cycle-v1',mapCycle);mapCache='';renderMapMatrix()};
   };
   window.renderMapEfficiencyMatrix=renderMapMatrix;
