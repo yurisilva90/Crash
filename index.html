@@ -686,14 +686,14 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   const compareMap=(payout,rounds)=>{
     const context=window.getMapMatrixContext?.();if(!context)return [];
     const data=context.source||[],windowCount=context.windowCount||0,active=config(),gap=typeof simulationGapLimit==='function'?simulationGapLimit():20;
-    const key=[payout,rounds,mapCycle,windowCount,context.firstId,context.lastId,active.levelRecoveries,active.recoveryDivider,gap].join('|');
+    const key=[payout,rounds,mapCycle,windowCount,data.length,context.firstId,context.lastId,active.levelRecoveries,active.recoveryDivider,gap].join('|');
     if(key===mapCache)return mapCells;
     const answer=[];
     for(let level=0;level<=6;level++){
       const options=[];
       for(const [cycleMode,levelMode] of modes){try{
         const input={...active,payout,cycleRounds:rounds,recoveries:mapCycle+1,levels:level,levelRecoveries:Math.max(1,Number(active.levelRecoveries)||1),cycleMode,levelMode};
-        const run=CrashMapFinance.project(data,input,gap),selected=windowCount===Infinity?run.events:run.events.slice(-windowCount);
+        const run=CrashMapFinance.project(data,input,gap),selected=windowCount===Infinity?run.events:windowCount>0?run.events.slice(-windowCount):[];
         const summary=CrashMapFinance.summarise(selected,input),efficiency=summary.profit/(summary.maxDD||Math.max(1,Math.abs(summary.profit)));
         options.push({cycle:mapCycle,level,cycleMode,levelMode,result:summary.profit,minimum:summary.minimumEquity,dd:summary.maxDD,efficiency,estimated:summary.estimated,outcomes:summary.outcomes});
       }catch(error){console.warn('Comparação do mapa indisponível',error)}}
