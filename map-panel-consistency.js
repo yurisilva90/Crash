@@ -404,6 +404,13 @@
       document.querySelectorAll('#mapView [data-count]').forEach(button => button.classList.toggle('active', button.dataset.count === active));
       const note = document.querySelector('#mapPageNote');
       if (note) note.textContent = `${filtered.length} sequências · ${summary.wins} wins · ${summary.losses} losses · ${summary.estimated} resultado(s) estimado(s) por gaps de até ${gap} rodadas · ${all.availableRounds} rodadas disponíveis`;
+      window.getMapMatrixContext = () => {
+        const current = projection();
+        return { source: current.source, windowCount: current.selected.length,
+          firstId: current.selected[0]?.anchorRoundId || null,
+          lastId: current.selected.at(-1)?.anchorRoundId || null };
+      };
+      try { window.renderMapEfficiencyMatrix?.(); } catch (error) { console.warn('Falha ao atualizar matriz financeira', error); }
       try { drawHistory(cfg, gap); }
       catch (error) { console.error('Falha nos indicadores históricos do painel', error); }
     } catch (error) {
