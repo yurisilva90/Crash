@@ -670,6 +670,19 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   const source=()=>{const context=window.getMapMatrixContext?.();return context?.source||[]};
   const modes=[['recover','recover'],['recover','profit'],['profit','recover'],['profit','profit']];
   let mapCycle=Number(localStorage.getItem('crash-map-efficiency-cycle-v1'))||1,mapCache='',mapCells=[];
+  let reportCache='',reportCells=[];
+  const reportSource=()=>{const base=typeof filteredRows==='function'?filteredRows(count>=500&&mapRows.length?mapRows:rows):rows;const wanted=count===Infinity?5000:Math.max(500,Number(count)||500);return base.slice(-Math.min(wanted,5000))};
+  const compare=(payout,rounds)=>{
+    const data=reportSource(),active=config(),gap=typeof simulationGapLimit==='function'?simulationGapLimit():20,key=[payout,rounds,active.levelRecoveries,active.recoveryDivider,gap,data.length,data[0]?.round_id,data.at(-1)?.round_id].join('|');
+    if(key===reportCache)return reportCells;
+    const answer=[];
+    for(let cycle=0;cycle<4;cycle++)for(let level=0;level<4;level++){
+      const options=[];
+      for(const [cycleMode,levelMode] of modes){try{const input={...active,payout,cycleRounds:rounds,recoveries:cycle+1,levels:level,levelRecoveries:Math.max(1,Number(active.levelRecoveries)||1),cycleMode,levelMode};const run=CrashMapFinance.project(data,input,gap),summary=CrashMapFinance.summarise(run.events,input),efficiency=summary.profit/(summary.maxDD||Math.max(1,Math.abs(summary.profit)));options.push({cycle,level,cycleMode,levelMode,result:summary.profit,minimum:summary.minimumEquity,dd:summary.maxDD,efficiency,estimated:summary.estimated,outcomes:summary.outcomes})}catch(error){console.warn('Comparação do relatório indisponível',error)}}
+      options.sort((a,b)=>b.efficiency-a.efficiency||a.dd-b.dd||b.result-a.result);if(options[0])answer.push(options[0]);
+    }
+    reportCache=key;reportCells=answer;return answer;
+  };
   const compareMap=(payout,rounds)=>{
     const context=window.getMapMatrixContext?.();if(!context)return [];
     const data=context.source||[],windowCount=context.windowCount||0,active=config(),gap=typeof simulationGapLimit==='function'?simulationGapLimit():20;
