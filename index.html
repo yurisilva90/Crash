@@ -429,7 +429,7 @@ function renderExposureCalculator(){
     const lastEntry=row.base*Math.pow(factor,Math.max(0,rounds-1));
     return `<div class="expected-row"><span>N${row.level} · C${row.cycle}</span><span>${money(row.base)} · ${money(lastEntry)}</span><span>${money(row.cost)}</span><span>${money(row.cumulative)}</span></div>`;
   }).join('');
-  const summary=`${payout.toLocaleString('pt-BR')}x · ${rounds}R · C0–C${maxCycle} ${cycleMode==='profit'?'L':'R'} · N0–N${maxLevel} ${levelMode==='profit'?'L':'R'} · perda ÷ ${plan.config.recoveryDivider.toLocaleString('pt-BR')}`;
+  const summary=`Entrada ${money(plan.config.initialBet)} · ${payout.toLocaleString('pt-BR')}x · ${rounds}R · C0–C${maxCycle} ${cycleMode==='profit'?'L':'R'} · N0–N${maxLevel} ${levelMode==='profit'?'L':'R'} · perda ÷ ${plan.config.recoveryDivider.toLocaleString('pt-BR')}`;
   const simSummary=document.querySelector('#simulationConfigSummary'),recSummary=document.querySelector('#recoveryConfigSummary');
   if(simSummary)simSummary.textContent=`Configuração global: ${summary}`;
   if(recSummary)recSummary.textContent=`Configuração global: ${summary}`;
