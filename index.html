@@ -704,9 +704,10 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
     let target=document.querySelector('#mapEfficiency');if(!target){target=document.createElement('section');target.id='mapEfficiency';target.className='wide';}
     const heat=document.querySelector('#mapView .heat-map');if(target&&heat&&target.parentElement!==heat.parentElement)heat.before(target);if(!target)return;
     const payout=Number(config().payout)||20,cellsByRound=new Map();
-    for(const rounds of [21,31,41,61])cellsByRound.set(rounds,new Map(compareMap(payout,rounds).map(x=>[x.level,x])));
-    const grid=['<span class="compare-axis">N</span>',...['21R','31R','41R','61R'].map(x=>`<span class="compare-axis">${x}</span>`)];
-    for(let level=0;level<=6;level++){grid.push(`<span class="compare-axis">N${level}</span>`);for(const rounds of [21,31,41,61])grid.push(mapCellMarkup(cellsByRound.get(rounds)?.get(level)))}
+    const roundOptions=Math.abs(payout-10)<0.001?[11,21,31]:[21,31,41,61];
+    for(const rounds of roundOptions)cellsByRound.set(rounds,new Map(compareMap(payout,rounds).map(x=>[x.level,x])));
+    const grid=['<span class="compare-axis">N</span>',...roundOptions.map(x=>`<span class="compare-axis">${x}R</span>`)];
+    for(let level=0;level<=6;level++){grid.push(`<span class="compare-axis">N${level}</span>`);for(const rounds of roundOptions)grid.push(mapCellMarkup(cellsByRound.get(rounds)?.get(level)))}
     const context=window.getMapMatrixContext?.(),period=window.mapPanelWindow===Infinity?'Total':`${Number(window.mapPanelWindow)||50} sequências`;
     target.innerHTML=`<div class="compare-head"><div><strong>Quadrante do Sucesso</strong><small>${payout.toLocaleString('pt-BR')}x · C${mapCycle} · ${period} do mapa</small></div><select class="compare-select" id="mapEfficiencyCycle" aria-label="Ciclo máximo">${[0,1,2,3].map(c=>`<option value="${c}" ${c===mapCycle?'selected':''}>C${c}</option>`).join('')}</select></div><div class="compare-grid">${grid.join('')}</div><div class="compare-note">Valores calculados com os modos R/L atualmente configurados no painel, sem seleção automática da melhor combinação. Líquido = ganhos menos perdas · SM = saldo mínimo · PS = pico de saldo · DD = maior queda em relação ao pico anterior. Payout e período seguem o cabeçalho e a janela das bolinhas. Amostra-base: ${(context?.source?.length||0).toLocaleString('pt-BR')} rodadas.</div>`;
     target.querySelector('select').onchange=e=>{mapCycle=Number(e.target.value);localStorage.setItem('crash-map-efficiency-cycle-v1',mapCycle);mapCache='';renderMapMatrix()};
@@ -753,6 +754,34 @@ const mapMetricsBase2=renderMapMetrics;renderMapMetrics=function(ordered,c){mapM
   const priorApply=applyStrategy;applyStrategy=(...args)=>{const result=priorApply(...args);decorate();return result};
   decorate();
 })();
+</script>
+<script>
+/* 10x usa apenas 11R, 21R e 31R no setup rápido e no Quadrante.
+   Esta rotina altera somente as opções de período; não toca na leitura do banco. */
+window.addEventListener('load',()=>{
+  const roundsSelect=document.querySelector('#quickRounds');
+  const payoutInput=document.querySelector('#payout');
+  if(!roundsSelect||!payoutInput)return;
+  const syncTenXRounds=()=>{
+    const isTenX=Math.abs(Number(payoutInput.value)-10)<0.001;
+    const allowed=isTenX?['11','21','31']:['21','31','41','61'];
+    const current=roundsSelect.value;
+    roundsSelect.replaceChildren(...allowed.map(value=>{
+      const option=document.createElement('option');
+      option.value=value;option.textContent=value;return option;
+    }));
+    if(allowed.includes(current))roundsSelect.value=current;
+    else{
+      roundsSelect.value='21';
+      roundsSelect.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    if(typeof window.renderMapEfficiencyMatrix==='function')requestAnimationFrame(window.renderMapEfficiencyMatrix);
+  };
+  payoutInput.addEventListener('input',syncTenXRounds);
+  payoutInput.addEventListener('change',syncTenXRounds);
+  document.querySelectorAll('[data-strategy]').forEach(button=>button.addEventListener('click',()=>requestAnimationFrame(syncTenXRounds)));
+  syncTenXRounds();
+});
 </script>
 <script src="dashboard-notifications.js"></script></body></html>
 
