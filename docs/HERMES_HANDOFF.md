@@ -37,6 +37,7 @@ Nunca commitar senha, perfil do Chrome, token de controle, `supabase-sync.json`,
 ## Configuração atual do painel
 
 - Estratégias visíveis: `30x`, `20x` e `2x`.
+- No setup rápido, quando o payout do cabeçalho é `10x`, as opções de ciclo são `11R`, `21R` e `31R`; `41R` e `61R` ficam indisponíveis. O Quadrante do Sucesso segue a mesma lista para 10x. Nos demais payouts, permanecem `21R`, `31R`, `41R` e `61R`.
 - O preset `20x` usa payout 20.
 - O fator por perda é derivado do payout: 20x = 1,05263; 30x = 1,03448.
 - Os ciclos de referência do mapa usam 21 rodadas: 1–21, 22–42 e 43–63.
