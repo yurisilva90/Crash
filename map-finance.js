@@ -13,6 +13,7 @@
   function normaliseConfig(input) {
     return {
       payout: Math.max(1.01, Number(input.payout) || 30),
+      initialBet: Math.max(0.0001, Number(input.initialBet) || 1),
       rounds: Math.max(1, Math.floor(Number(input.cycleRounds) || 21)),
       maxCycle: Math.max(0, Math.floor(Number(input.recoveries || 1) - 1)),
       maxLevel: Math.max(0, Math.floor(Number(input.levels) || 0)),
@@ -50,7 +51,7 @@
         const mode = cycle === 0 ? cfg.levelMode :
           level > 0 && cfg.levelMode === 'profit' ? 'profit' : cfg.cycleMode;
         const target = mode === 'profit' ? net : 0;
-        const base = first ? 1 : (debt / cfg.recoveryDivider + target) / net;
+        const base = first ? cfg.initialBet : (debt / cfg.recoveryDivider + target * cfg.initialBet) / net;
         const cost = base * factor;
         debt += cost;
         rows.push({ level, cycle, base, cost, cumulative: debt, target: first ? net : target });
@@ -82,7 +83,7 @@
     };
 
     function newCampaign(signal) {
-      return { level: 0, cycle: 0, position: 0, base: 1, profit: 0,
+      return { level: 0, cycle: 0, position: 0, base: cfg.initialBet, profit: 0,
         deltas: [], cycles: [], signal: normaliseSignal(signal),
         estimated: Boolean(signal?.estimated), waitingLevel: false,
         levelRecoveryWins: 0 };
