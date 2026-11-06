@@ -89,7 +89,7 @@
         levelRecoveryWins: 0 };
     }
     function nextBase(current, mode) {
-      const target = mode === 'profit' ? cfg.payout - 1 : 0;
+      const target = mode === 'profit' ? (cfg.payout - 1) * cfg.initialBet : 0;
       // Depois de um win parcial no mesmo nível, o próximo bloco cobre o
       // restante dividido apenas pelas partes ainda pendentes. Ex.: ÷2:
       // primeiro win cobre metade; o segundo cobre todo o saldo restante.
